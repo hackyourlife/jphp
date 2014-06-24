@@ -53,6 +53,11 @@ class JVM {
 		//print_r($c->attributes);
 	}
 
+	public function call($classname, $method, $signature, $args = NULL) {
+		$this->load($classname);
+		return $this->classes[$classname]->call($method, $signature, $args);
+	}
+
 	public function instantiate($classname) {
 		$this->load($classname);
 		return $this->classes[$classname]->instantiate();

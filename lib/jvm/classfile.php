@@ -120,8 +120,10 @@ class JavaClass {
 					throw new Exception(sprintf('Unknown constant pool entry type: %d', $type));
 			}
 			$pool[] = $entry;
-			if($taketwo)
+			if($taketwo) {
 				$pool[] = 'unusable';
+				$i++;
+			}
 		}
 		return $pool;
 	}

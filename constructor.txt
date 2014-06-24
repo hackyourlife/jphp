@@ -1,104 +1,157 @@
-Compiled from "constructor.java"
-public class constructor extends java.lang.Object
+Classfile /home/daniel/smb-git/j2php/constructor.class
+  Last modified Jun 24, 2014; size 740 bytes
+  MD5 checksum 4bc4a7fe4249cb967d8725d900c07ff6
+  Compiled from "constructor.java"
+public class constructor
   SourceFile: "constructor.java"
   minor version: 0
-  major version: 50
-  Constant pool:
-const #1 = Method	#8.#18;	//  java/lang/Object."<init>":()V
-const #2 = Field	#19.#20;	//  java/lang/System.out:Ljava/io/PrintStream;
-const #3 = String	#21;	//  construct!
-const #4 = Method	#22.#23;	//  java/io/PrintStream.println:(Ljava/lang/String;)V
-const #5 = class	#24;	//  constructor
-const #6 = Method	#5.#18;	//  constructor."<init>":()V
-const #7 = String	#25;	//  static initializer
-const #8 = class	#26;	//  java/lang/Object
-const #9 = Asciz	<init>;
-const #10 = Asciz	()V;
-const #11 = Asciz	Code;
-const #12 = Asciz	LineNumberTable;
-const #13 = Asciz	main;
-const #14 = Asciz	([Ljava/lang/String;)V;
-const #15 = Asciz	<clinit>;
-const #16 = Asciz	SourceFile;
-const #17 = Asciz	constructor.java;
-const #18 = NameAndType	#9:#10;//  "<init>":()V
-const #19 = class	#27;	//  java/lang/System
-const #20 = NameAndType	#28:#29;//  out:Ljava/io/PrintStream;
-const #21 = Asciz	construct!;
-const #22 = class	#30;	//  java/io/PrintStream
-const #23 = NameAndType	#31:#32;//  println:(Ljava/lang/String;)V
-const #24 = Asciz	constructor;
-const #25 = Asciz	static initializer;
-const #26 = Asciz	java/lang/Object;
-const #27 = Asciz	java/lang/System;
-const #28 = Asciz	out;
-const #29 = Asciz	Ljava/io/PrintStream;;
-const #30 = Asciz	java/io/PrintStream;
-const #31 = Asciz	println;
-const #32 = Asciz	(Ljava/lang/String;)V;
-
+  major version: 51
+  flags: ACC_PUBLIC, ACC_SUPER
+Constant pool:
+   #1 = Methodref          #5.#23         //  java/lang/Object."<init>":()V
+   #2 = Fieldref           #24.#25        //  java/lang/System.out:Ljava/io/PrintStream;
+   #3 = String             #26            //  construct!
+   #4 = Methodref          #27.#28        //  java/io/PrintStream.println:(Ljava/lang/String;)V
+   #5 = Class              #29            //  java/lang/Object
+   #6 = Class              #30            //  constructor
+   #7 = Methodref          #6.#23         //  constructor."<init>":()V
+   #8 = String             #31            //  static initializer
+   #9 = Utf8               <init>
+  #10 = Utf8               ()V
+  #11 = Utf8               Code
+  #12 = Utf8               LineNumberTable
+  #13 = Utf8               test
+  #14 = Utf8               ()Ljava/lang/Object;
+  #15 = Utf8               doubleTest
+  #16 = Utf8               ()D
+  #17 = Utf8               (I)V
+  #18 = Utf8               main
+  #19 = Utf8               ([Ljava/lang/String;)V
+  #20 = Utf8               <clinit>
+  #21 = Utf8               SourceFile
+  #22 = Utf8               constructor.java
+  #23 = NameAndType        #9:#10         //  "<init>":()V
+  #24 = Class              #32            //  java/lang/System
+  #25 = NameAndType        #33:#34        //  out:Ljava/io/PrintStream;
+  #26 = Utf8               construct!
+  #27 = Class              #35            //  java/io/PrintStream
+  #28 = NameAndType        #36:#37        //  println:(Ljava/lang/String;)V
+  #29 = Utf8               java/lang/Object
+  #30 = Utf8               constructor
+  #31 = Utf8               static initializer
+  #32 = Utf8               java/lang/System
+  #33 = Utf8               out
+  #34 = Utf8               Ljava/io/PrintStream;
+  #35 = Utf8               java/io/PrintStream
+  #36 = Utf8               println
+  #37 = Utf8               (Ljava/lang/String;)V
 {
-public constructor();
-  Signature: ()V
-  LineNumberTable: 
-   line 6: 0
-   line 7: 4
-   line 8: 12
+  public constructor();
+    Signature: ()V
+    flags: ACC_PUBLIC
+    LineNumberTable:
+      line 6: 0
+      line 7: 4
+      line 8: 12
+    Code:
+      stack=2, locals=1, args_size=1
+         0: aload_0       
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: getstatic     #2                  // Field java/lang/System.out:Ljava/io/PrintStream;
+         7: ldc           #3                  // String construct!
+         9: invokevirtual #4                  // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+        12: return        
+      LineNumberTable:
+        line 6: 0
+        line 7: 4
+        line 8: 12
 
+  public static java.lang.Object test();
+    Signature: ()Ljava/lang/Object;
+    flags: ACC_PUBLIC, ACC_STATIC
+    LineNumberTable:
+      line 11: 0
+      line 12: 6
+    Code:
+      stack=1, locals=1, args_size=0
+         0: bipush        7
+         2: anewarray     #5                  // class java/lang/Object
+         5: astore_0      
+         6: aconst_null   
+         7: areturn       
+      LineNumberTable:
+        line 11: 0
+        line 12: 6
 
+  public double doubleTest();
+    Signature: ()D
+    flags: ACC_PUBLIC
+    LineNumberTable:
+      line 16: 0
+      line 17: 2
+      line 18: 6
+    Code:
+      stack=4, locals=5, args_size=1
+         0: dconst_1      
+         1: dstore_1      
+         2: dload_1       
+         3: dload_1       
+         4: dadd          
+         5: dstore_3      
+         6: dload_1       
+         7: dload_3       
+         8: dadd          
+         9: dreturn       
+      LineNumberTable:
+        line 16: 0
+        line 17: 2
+        line 18: 6
 
-  Code:
-   Stack=2, Locals=1, Args_size=1
-   0:	aload_0
-   1:	invokespecial	#1; //Method java/lang/Object."<init>":()V
-   4:	getstatic	#2; //Field java/lang/System.out:Ljava/io/PrintStream;
-   7:	ldc	#3; //String construct!
-   9:	invokevirtual	#4; //Method java/io/PrintStream.println:(Ljava/lang/String;)V
-   12:	return
-  LineNumberTable: 
-   line 6: 0
-   line 7: 4
-   line 8: 12
+  public static void test(int);
+    Signature: (I)V
+    flags: ACC_PUBLIC, ACC_STATIC
+    LineNumberTable:
+      line 22: 0
+      line 23: 2
+    Code:
+      stack=1, locals=2, args_size=1
+         0: iload_0       
+         1: istore_1      
+         2: return        
+      LineNumberTable:
+        line 22: 0
+        line 23: 2
 
+  public static void main(java.lang.String[]);
+    Signature: ([Ljava/lang/String;)V
+    flags: ACC_PUBLIC, ACC_STATIC
+    LineNumberTable:
+      line 26: 0
+      line 27: 8
+    Code:
+      stack=2, locals=1, args_size=1
+         0: new           #6                  // class constructor
+         3: dup           
+         4: invokespecial #7                  // Method "<init>":()V
+         7: pop           
+         8: return        
+      LineNumberTable:
+        line 26: 0
+        line 27: 8
 
-public static void main(java.lang.String[]);
-  Signature: ([Ljava/lang/String;)V
-  LineNumberTable: 
-   line 11: 0
-   line 12: 8
-
-
-
-  Code:
-   Stack=2, Locals=1, Args_size=1
-   0:	new	#5; //class constructor
-   3:	dup
-   4:	invokespecial	#6; //Method "<init>":()V
-   7:	pop
-   8:	return
-  LineNumberTable: 
-   line 11: 0
-   line 12: 8
-
-
-static {};
-  Signature: ()V
-  LineNumberTable: 
-   line 3: 0
-   line 4: 8
-
-
-
-  Code:
-   Stack=2, Locals=0, Args_size=0
-   0:	getstatic	#2; //Field java/lang/System.out:Ljava/io/PrintStream;
-   3:	ldc	#7; //String static initializer
-   5:	invokevirtual	#4; //Method java/io/PrintStream.println:(Ljava/lang/String;)V
-   8:	return
-  LineNumberTable: 
-   line 3: 0
-   line 4: 8
-
-
+  static {};
+    Signature: ()V
+    flags: ACC_STATIC
+    LineNumberTable:
+      line 3: 0
+      line 4: 8
+    Code:
+      stack=2, locals=0, args_size=0
+         0: getstatic     #2                  // Field java/lang/System.out:Ljava/io/PrintStream;
+         3: ldc           #8                  // String static initializer
+         5: invokevirtual #4                  // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+         8: return        
+      LineNumberTable:
+        line 3: 0
+        line 4: 8
 }
-
