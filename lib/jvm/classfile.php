@@ -145,7 +145,7 @@ class JavaClass {
 			$entry['access_flags'] = $in->readShort();
 			$entry['name_index'] = $in->readShort();
 			$entry['descriptor_index'] = $in->readShort();
-			$enrty['attributes_count'] = $in->readShort();
+			$entry['attributes_count'] = $in->readShort();
 			$entry['attributes'] = self::readAttributes($in, $entry['attributes_count']);
 			$fields[] = $entry;
 		}
@@ -208,7 +208,7 @@ class JavaClass {
 				return $this->getSourceFileAttribute($attribute);
 			default:
 				//throw new Exception(sprintf('unknown attribute type: \'%s\'', $type['bytes']));
-				echo(sprintf('ignoring unknown attribute type: \'%s\'', $type['bytes']));
+				//echo(sprintf('ignoring unknown attribute type: \'%s\'', $type['bytes']));
 				//return $attribute;
 				return NULL;
 		}

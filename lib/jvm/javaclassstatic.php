@@ -4,14 +4,14 @@ class JavaClassStatic {
 	private $jvm;
 	private $classfile;
 	private $nativemethods;
-	private $staticvars;
+	private $fields;
 	private $methods;
 
 	public function __construct(&$jvm, $classfile) {
 		$this->jvm = $jvm;
 		$this->classfile = $classfile;
 		$this->nativemethods = array();
-		$this->staticvars = array();
+		$this->fields = array();
 		$this->methods = array();
 		foreach($classfile->methods as $id => $method) {
 			$name = $classfile->constant_pool[$method['name_index']]['bytes'];
@@ -25,6 +25,7 @@ class JavaClassStatic {
 
 	public function getMethodId($name, $signature) {
 		if(!isset($this->methods[$name][$signature])) {
+			print_r($this->methods);
 			throw new MethodNotFoundException($name, $signature);
 		}
 		return $this->methods[$name][$signature];

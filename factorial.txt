@@ -1,0 +1,99 @@
+Classfile /home/daniel/smb-git/j2php/factorial.class
+  Last modified Jun 24, 2014; size 397 bytes
+  MD5 checksum 48d4567285cc54bf507ee96bce02c6ef
+  Compiled from "factorial.java"
+public class factorial
+  SourceFile: "factorial.java"
+  minor version: 0
+  major version: 51
+  flags: ACC_PUBLIC, ACC_SUPER
+Constant pool:
+   #1 = Methodref          #4.#16         //  java/lang/Object."<init>":()V
+   #2 = Methodref          #3.#17         //  factorial.factorial:(I)J
+   #3 = Class              #9             //  factorial
+   #4 = Class              #18            //  java/lang/Object
+   #5 = Utf8               <init>
+   #6 = Utf8               ()V
+   #7 = Utf8               Code
+   #8 = Utf8               LineNumberTable
+   #9 = Utf8               factorial
+  #10 = Utf8               (I)J
+  #11 = Utf8               StackMapTable
+  #12 = Utf8               main
+  #13 = Utf8               ([Ljava/lang/String;)V
+  #14 = Utf8               SourceFile
+  #15 = Utf8               factorial.java
+  #16 = NameAndType        #5:#6          //  "<init>":()V
+  #17 = NameAndType        #9:#10         //  factorial:(I)J
+  #18 = Utf8               java/lang/Object
+{
+  public factorial();
+    Signature: ()V
+    flags: ACC_PUBLIC
+    LineNumberTable:
+      line 1: 0
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0       
+         1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+         4: return        
+      LineNumberTable:
+        line 1: 0
+
+  public static long factorial(int);
+    Signature: (I)J
+    flags: ACC_PUBLIC, ACC_STATIC
+    LineNumberTable:
+      line 3: 0
+      line 4: 2
+      line 5: 9
+      line 4: 14
+      line 7: 20
+    Code:
+      stack=4, locals=4, args_size=1
+         0: lconst_1      
+         1: lstore_1      
+         2: iconst_2      
+         3: istore_3      
+         4: iload_3       
+         5: iload_0       
+         6: if_icmpgt     20
+         9: lload_1       
+        10: iload_3       
+        11: i2l           
+        12: lmul          
+        13: lstore_1      
+        14: iinc          3, 1
+        17: goto          4
+        20: lload_1       
+        21: lreturn       
+      LineNumberTable:
+        line 3: 0
+        line 4: 2
+        line 5: 9
+        line 4: 14
+        line 7: 20
+      StackMapTable: number_of_entries = 2
+           frame_type = 253 /* append */
+             offset_delta = 4
+        locals = [ long, int ]
+           frame_type = 250 /* chop */
+          offset_delta = 15
+
+
+  public static void main(java.lang.String[]);
+    Signature: ([Ljava/lang/String;)V
+    flags: ACC_PUBLIC, ACC_STATIC
+    LineNumberTable:
+      line 11: 0
+      line 12: 5
+    Code:
+      stack=2, locals=1, args_size=1
+         0: iconst_5      
+         1: invokestatic  #2                  // Method factorial:(I)J
+         4: pop2          
+         5: return        
+      LineNumberTable:
+        line 11: 0
+        line 12: 5
+}

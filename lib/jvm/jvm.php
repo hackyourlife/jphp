@@ -34,6 +34,7 @@ class JVM {
 	public function load($classname) {
 		if(isset($this->classes[$classname]))
 			return;
+		print("[JVM] loading '$classname'\n");
 		$filename = $this->locateClass($classname);
 		if($filename === false)
 			throw new ClassNotFoundException($classname);

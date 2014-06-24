@@ -1,32 +1,5 @@
 <?php
 
-function s16($u16) {
-	$sign = $u16 & 0x8000;
-	if($sign) {
-		return -(((~$u16) & 0xFFFF) + 1);
-	} else {
-		return $u16;
-	}
-}
-
-function s32($u32) {
-	$sign = $u32 & 0x80000000;
-	if($sign) {
-		return -(((~$u32) & 0xFFFFFFFF) + 1);
-	} else {
-		return $u32;
-	}
-}
-
-function f64($bits) {
-	$s = (($bits >> 63) == 0) ? 1 : -1;
-	$e = (int)(($bits >> 52) & 0x7ff);
-	$m = ($e == 0) ?
-		($bits & 0xfffffffffffff) << 1 :
-		($bits & 0xfffffffffffff) | 0x10000000000000;
-	return $s * $m * pow(2, $e - 1075);
-}
-
 class Interpreter {
 	private $jvm;
 	private	$classfile;
@@ -113,7 +86,7 @@ class Interpreter {
 		$this->code = str2bin($code_attribute['code']);
 		$descriptor = $this->parseDescriptor($this->classfile->constant_pool[$method['descriptor_index']]['bytes']);
 		if($parameters !== NULL) {
-			$i = 1;
+			$i = 0;
 			$n = 0;
 			foreach($parameters as $value) {
 				$this->variables[$i] = $value;
@@ -148,8 +121,8 @@ class Interpreter {
 				return false;
 			}
 
-			$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
-			printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
+			//$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
+			//printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
 			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result);
 			$i++;
 
