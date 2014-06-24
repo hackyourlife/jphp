@@ -36,7 +36,7 @@ class JVM {
 			return;
 		$filename = $this->locateClass($classname);
 		if($filename === false)
-			throw new Exception('class not found!');
+			throw new ClassNotFoundException($classname);
 		$file = new FileInputStream($filename);
 		$c = new JavaClass($file);
 		$file->close();

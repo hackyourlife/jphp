@@ -37,7 +37,7 @@ class JavaClassStatic {
 
 	public function call($name, $signature, $args = NULL) {
 		$method = $this->getMethod($name, $signature);
-		$interpreter = new Interpreter($this->classfile);
+		$interpreter = new Interpreter($this->jvm, $this->classfile);
 		$interpreter->setMethod($method, $args);
 		$pc = $interpreter->execute();
 		return $interpreter->getResult();

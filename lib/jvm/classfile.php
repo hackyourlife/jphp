@@ -25,6 +25,16 @@ define('JAVA_ACC_NATIVE',			(int)0x0100);
 define('JAVA_ACC_INTERFACE',			(int)0x0200);
 define('JAVA_ACC_ABSTRACT',			(int)0x0400);
 define('JAVA_ACC_STRICT',			(int)0x0800);
+define('JAVA_FIELDTYPE_BYTE',			'B');
+define('JAVA_FIELDTYPE_CHAR',			'C');
+define('JAVA_FIELDTYPE_DOUBLE',			'D');
+define('JAVA_FIELDTYPE_FLOAT',			'F');
+define('JAVA_FIELDTYPE_INTEGER',		'I');
+define('JAVA_FIELDTYPE_LONG',			'J');
+define('JAVA_FIELDTYPE_CLASS',			'L');
+define('JAVA_FIELDTYPE_SHORT',			'S');
+define('JAVA_FIELDTYPE_BOOLEAN',		'Z');
+define('JAVA_FIELDTYPE_ARRAY',			'[');
 
 class JavaClass {
 	public	$magic;
