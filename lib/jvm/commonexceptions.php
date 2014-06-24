@@ -17,3 +17,9 @@ class NoCodeSegmentException extends Exception {
 		parent::__construct("no code attribute attached to function");
 	}
 }
+
+class NoSuchFieldException extends Exception {
+	public function __construct($name) {
+		parent::__construct("Field not found: $name");
+	}
+}

@@ -5,8 +5,11 @@ public class constructor {
 		System.out.println("static initializer");
 	}
 
+	String s;
+
 	public constructor() {
-		System.out.println("construct!");
+		s = "construct!";
+		System.out.println(s);
 	}
 
 	public static void main(String[] args) {

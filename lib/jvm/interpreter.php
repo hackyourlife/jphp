@@ -20,7 +20,7 @@ class Interpreter {
 		$this->result = false;
 	}
 
-	public function parseDescriptor($descriptor) {
+	public static function parseDescriptor($descriptor) {
 		$args = array();
 		$returns = NULL;
 		$i = 0;
@@ -123,7 +123,7 @@ class Interpreter {
 
 			//$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
 			//printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
-			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result);
+			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
 			$i++;
 
 			// DEBUG
@@ -138,7 +138,7 @@ class Interpreter {
 		return $this->pc;
 	}
 
-	public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result) {
+	public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$jvm) {
 		$bytes = 1;
 		switch($code[$pc]) {
 			case 0x32: { // aaload; throws NullPointerException, ArrayIndexOutOfBoundsException
@@ -693,9 +693,11 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				// FIXME: get class from vm
-				//$value = $object->getfield($index);
-				$value = NULL;
+				$field = $constants[$index];
+				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
+				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$class = $jvm->getStatic($class_name);
+				$value = $class->getField($field_name);
 				$stack->push($value);
 				break;
 			}
@@ -1124,7 +1126,21 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
 				// FIXME: correct handling of invokevirtual
+				$method = $constants[$index];
+				$method_info = $constants[$method['name_and_type_index']];
+				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
+				$method_name = $constants[$method_info['name_index']]['bytes'];
+				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
+				print("'$class_name'.'$method_name' : '$method_descriptor'\n");
+				$descriptor = Interpreter::parseDescriptor($method_descriptor);
+				$argc = count($descriptor->args);
+				$args = array();
+				for($i = 0; $i < $argc; $i++) {
+					$args[] = $stack->pop();
+				}
 				$objectref = $stack->pop();
+				$object = $references->get($objectref);
+				$value = $object->call($method_name, $method_descriptor, $args);
 				break;
 			}
 			case 0x80: { // ior
@@ -1304,7 +1320,24 @@ class Interpreter {
 			case 0x12: { // ldc
 				$index = $code[$pc + 1];
 				$bytes++;
-				$value = $constants[$index]; // FIXME
+				$constant = $constants[$index];
+				switch($constant['type']) { // FIXME
+				case JAVA_CONSTANT_CLASS:
+				case JAVA_CONSTANT_FIELDREF:
+				case JAVA_CONSTANT_METHODREF:
+				case JAVA_CONSTANT_INTERFACEMETHODREF:
+					throw new Exception('not implemented');
+				case JAVA_CONSTANT_STRING:
+					$value = $constants[$constant['string_index']]['bytes'];
+					break;
+				case JAVA_CONSTANT_INTEGER:
+				case JAVA_CONSTANT_FLOAT:
+				case JAVA_CONSTANT_LONG:
+				case JAVA_CONSTANT_DOUBLE:
+				case JAVA_CONSTANT_NAMEANDTYPE:
+				case JAVA_CONSTANT_UTF8:
+					throw new Exception('not implemented');
+				}
 				$stack->push($value);
 				break;
 			}
@@ -1313,7 +1346,24 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				$value = $constants[$index]; // FIXME
+				$constant = $constants[$index];
+				switch($constant['type']) { // FIXME
+				case JAVA_CONSTANT_CLASS:
+				case JAVA_CONSTANT_FIELDREF:
+				case JAVA_CONSTANT_METHODREF:
+				case JAVA_CONSTANT_INTERFACEMETHODREF:
+					throw new Exception('not implemented');
+				case JAVA_CONSTANT_STRING:
+					$value = $constants[$constant['string_index']]['bytes'];
+					break;
+				case JAVA_CONSTANT_INTEGER:
+				case JAVA_CONSTANT_FLOAT:
+				case JAVA_CONSTANT_LONG:
+				case JAVA_CONSTANT_DOUBLE:
+				case JAVA_CONSTANT_NAMEANDTYPE:
+				case JAVA_CONSTANT_UTF8:
+					throw new Exception('not implemented');
+				}
 				$stack->push($value);
 				break;
 			}
@@ -1582,7 +1632,11 @@ class Interpreter {
 				$bytes += 2;
 				$type = $constants[$index];
 				$value = $stack->pop();
-				// FIXME: correct implementation of putstatic
+				$field = $constants[$index];
+				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
+				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$class = $jvm->getStatic($class_name);
+				$class->setField($field_name, $value);
 				break;
 			}
 			case 0xa9: { // ret

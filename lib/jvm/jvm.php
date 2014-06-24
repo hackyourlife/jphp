@@ -6,9 +6,10 @@ class JVM {
 	private	$classpath;
 	private $classinstances;
 	private $threads;
+	private $references;
 
 	public function __construct($params = array()) {
-		$this->classpath = array('.');
+		$this->classpath = array('lib/classes', '.');
 		$this->classinstances = array();
 		$this->threads = array();
 		foreach($params as $name => $value) {
@@ -42,6 +43,7 @@ class JVM {
 		$c = new JavaClass($file);
 		$file->close();
 		$this->classes[$classname] = new JavaClassStatic($this, $c);
+		$this->classes[$classname]->initialize();
 		//echo('constant_pool: ');
 		//print_r($c->constant_pool);
 		//echo('interfaces: ');
@@ -52,6 +54,11 @@ class JVM {
 		//print_r($c->methods);
 		//echo('attributes: ');
 		//print_r($c->attributes);
+	}
+
+	public function getStatic($classname) {
+		$this->load($classname);
+		return $this->classes[$classname];
 	}
 
 	public function call($classname, $method, $signature, $args = NULL) {

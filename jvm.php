@@ -21,12 +21,13 @@ require_once('lib/jvm/jvm.php');
 echo('creating jvm...');
 $jvm = new JVM();
 echo(" done\n");
-$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));
-echo('result: '); var_dump($result);
 
-//echo('creating instance of "constructor"...');
-//class = $jvm->instantiate('constructor');
-//echo(" done\n");
-//$class->call('main', '([Ljava/lang/String;)V');
-//$class->delete();
+//$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));
+//echo('result: '); var_dump($result);
+
+echo('creating instance of "constructor"...');
+$class = $jvm->instantiate('constructor');
+echo(" done\n");
+$class->call('main', '([Ljava/lang/String;)V');
+$class->delete();
 echo(" done\n");

@@ -8,6 +8,8 @@ public class factorial {
 	}
 
 	public static void main(String[] args) {
-		factorial(5);
+		int x = 5;
+		long f = factorial(x);
+		System.out.printf("factorial(%d) = %d\n", x, f);
 	}
 }

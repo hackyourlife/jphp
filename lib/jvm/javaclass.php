@@ -5,7 +5,6 @@ class JavaClassInstance {
 
 	private $nativemethods;
 	private $variables;
-	private $staticvars;
 
 	public function __construct(&$staticclass) {
 		$this->staticclass = $staticclass;
