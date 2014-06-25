@@ -6,8 +6,8 @@ class JVM {
 	private	$classpath;
 	private $classinstances;
 	private $threads;
-	private $references;
 	private $native;
+	public $references;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
@@ -22,6 +22,28 @@ class JVM {
 				break;
 			}
 		}
+	}
+
+	public function initialize() {
+		//$this->load('java/lang/System');
+		//print("completely instantiated\n");
+		//var_dump($this->getStatic('java/lang/System')->getField('out'));
+		//$string = $this->instantiate('java/lang/String');
+		//$ref = $this->references->newref();
+		//$this->references->set($ref, $string);
+		//$string->callSpecial($ref, '<init>', '()V');
+		//$string->dump();
+		//$array = $this->references->get($string->getField('value'));
+		//var_dump($array->toString());
+		//$this->references->free($ref);
+		$object = $this->instantiate('characters');
+		$ref = $this->references->newref();
+		$this->references->set($ref, $object);
+		$object->callSpecial($ref, '<init>', '()V');
+		$object->dump();
+		$this->getStatic('characters')->dump();
+		$this->references->free($ref);
+		exit(0);
 	}
 
 	private function locateClass($classname) {
@@ -70,7 +92,7 @@ class JVM {
 		$call($this, $class, $args);
 	}
 
-	public function getStatic($classname) {
+	public function &getStatic($classname) {
 		$this->load($classname);
 		return $this->classes[$classname];
 	}
@@ -85,28 +107,51 @@ class JVM {
 		return $this->classes[$classname]->instantiate();
 	}
 
-	public function getReferences() {
-		return $this->references;
+	public static function defaultValue($descriptor) {
+		switch($descriptor[0]) {
+		case JAVA_FIELDTYPE_BYTE:
+		case JAVA_FIELDTYPE_CHAR:
+		case JAVA_FIELDTYPE_INTEGER:
+		case JAVA_FIELDTYPE_LONG:
+		case JAVA_FIELDTYPE_SHORT:
+		case JAVA_FIELDTYPE_BOOLEAN:
+			return 0;
+		case JAVA_FIELDTYPE_DOUBLE:
+			return (double)0.0;
+		case JAVA_FIELDTYPE_FLOAT:
+			return (float)0.0;
+		case JAVA_FIELDTYPE_CLASS:
+		case JAVA_FIELDTYPE_ARRAY:
+			return NULL;
+		}
 	}
+
 }
 
 class References {
-	private $references = array();
-	private $nextref = 0;
+	private $references;
+	private $nextref;
+
+	public function __construct() {
+		$this->references = array();
+		$this->nextref = 1;
+	}
 
 	public function dump() {
 		print_r($this->references);
 	}
 
 	public function get($ref) {
-		if(!isset($this->references[$ref]))
+		if(!isset($this->references[$ref])) {
 			throw new NoSuchReferenceException($ref);
+		}
 		return $this->references[$ref]->value;
 	}
 
 	public function set($ref, $value) {
+		print("[GC] allocating object #$ref\n");
 		if(isset($this->references[$ref])) {
-			$this->references[$ref]->refcount++;
+			//$this->references[$ref]->refcount++;
 			$this->references[$ref]->value = $value;
 		} else {
 			$this->references[$ref] = (object)array(
@@ -117,21 +162,39 @@ class References {
 	}
 
 	public function useref($ref) {
-		if(!isset($this->references[$ref]))
+		if(!isset($this->references[$ref])) {
 			throw new NoSuchReferenceException($ref);
+		}
 		$this->references[$ref]->refcount++;
+		return $this->references[$ref]->value;
 	}
 
 	public function free($ref) {
-		if(!isset($this->references[$ref]))
+		if(!isset($this->references[$ref])) {
 			throw new NoSuchReferenceException($ref);
+		}
 		$this->references[$ref]->refcount--;
 		if($this->references[$ref]->refcount == 0) {
+			print("[GC] releasing object #$ref\n");
+			try {
+				$this->references[$ref]->value->finalize();
+			} catch(Exception $e) {
+				printException($e);
+			}
 			unset($this->references[$ref]);
 		}
 	}
 
 	public function newref() {
 		return $this->nextref++;
+	}
+
+	public function getReference(&$object) {
+		foreach($this->references as $reference => $value) {
+			if($value->value === $object) {
+				return $reference;
+			}
+		}
+		return NULL;
 	}
 }

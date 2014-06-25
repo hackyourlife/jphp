@@ -39,3 +39,8 @@ class NoSuchReferenceException extends Exception {
 		parent::__construct("Reference not found: $name");
 	}
 }
+
+function printException($e) {
+	print("[ERROR] {$e->getFile()}:{$e->getLine()}: {$e->getMessage()}\n");
+	print($e->getTraceAsString());
+}

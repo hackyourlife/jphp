@@ -13,7 +13,7 @@ class Interpreter {
 		$this->jvm = $jvm;
 		$this->classfile = $classfile;
 		$this->stack = new ArgumentStack();
-		$this->references = new InterpreterReferences($jvm->getReferences());
+		$this->references = new InterpreterReferences($jvm->references);
 		$this->variables = array();
 		$this->pc = 0;
 		$this->finished = false;
@@ -69,7 +69,7 @@ class Interpreter {
 		return (object)array('args' => $args, 'returns' => $returns);
 	}
 
-	public function setMethod($method, $parameters = NULL) {
+	public function setMethod($method, $parameters = NULL, $special = false) {
 		$this->method = $method;
 		$code_attribute_id = false;
 		foreach($method['attributes'] as $id => $attribute) {
@@ -85,9 +85,17 @@ class Interpreter {
 		$this->code_length = $code_attribute['code_length'];
 		$this->code = str2bin($code_attribute['code']);
 		$descriptor = $this->parseDescriptor($this->classfile->constant_pool[$method['descriptor_index']]['bytes']);
+		for($i = 0; $i < $code_attribute['max_locals']; $i++) {
+			$this->variables[$i] = 0;
+		}
 		if($parameters !== NULL) {
 			$i = 0;
 			$n = 0;
+			if($special) {
+				$this->variables[0] = $parameters[0];
+				$i++;
+				$parameters = array_slice($parameters, 1);
+			}
 			foreach($parameters as $value) {
 				$this->variables[$i] = $value;
 				$i++;
@@ -125,8 +133,8 @@ class Interpreter {
 				return false;
 			}
 
-			//$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
-			//printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
+			$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
+			printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
 			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
 			$i++;
 
@@ -149,7 +157,7 @@ class Interpreter {
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
 				$array = $references->get($arrayref);
-				if($array == NULL)
+				if($array === NULL)
 					throw new Exception('NullPointerException');
 				$value = $array->get($index);
 				$stack->push($value);
@@ -169,24 +177,29 @@ class Interpreter {
 			}
 			case 0x19: { // aload
 				$index = $code[$pc + 1];
-				$stack->push($ref);
+				$objectref = $variables[$index];
+				$stack->push($objectref);
 				$bytes++;
 				break;
 			}
 			case 0x2a: { // aload_0
-				$stack->push(0);
+				$objectref = $variables[0];
+				$stack->push($objectref);
 				break;
 			}
 			case 0x2b: { // aload_1
-				$stack->push(1);
+				$objectref = $variables[1];
+				$stack->push($objectref);
 				break;
 			}
 			case 0x2c: { // aload_2
-				$stack->push(2);
+				$objectref = $variables[2];
+				$stack->push($objectref);
 				break;
 			}
 			case 0x2d: { // aload_3
-				$stack->push(3);
+				$objectref = $variables[3];
+				$stack->push($objectref);
 				break;
 			}
 			case 0xbd: { // anewarray, throws NegativeArraySizeException
@@ -242,6 +255,11 @@ class Interpreter {
 			}
 			case 0xbf: { // athrow, throws NullPointerException, IllegalMonitorStateException
 				$objectref = $stack->pop();
+				if($objectref === NULL) {
+					throw new NullPointerException();
+				}
+				$object = $references->get($objectref);
+				throw new Exception($object->call('getMessage', '()Ljava/lang/String;'));
 				$finished = true;
 				break; // FIXME: EXCEPTION
 			}
@@ -687,8 +705,10 @@ class Interpreter {
 				$bytes += 2;
 				$objectref = $stack->pop();
 				$object = $references->get($objectref);
-				// FIXME
-				$value = $object->getfield($index);
+				$field = $constants[$index];
+				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
+				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$value = $object->getField($field_name);
 				$stack->push($value);
 				break;
 			}
@@ -1112,8 +1132,27 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				// FIXME: correct handling of invokespecial
+				$method = $constants[$index];
+				$method_info = $constants[$method['name_and_type_index']];
+				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
+				$method_name = $constants[$method_info['name_index']]['bytes'];
+				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
+				//print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				$descriptor = Interpreter::parseDescriptor($method_descriptor);
+				$argc = count($descriptor->args);
+				$args = array();
+				for($i = 0; $i < $argc; $i++) {
+					$args[] = $stack->pop();
+				}
 				$objectref = $stack->pop();
+				if($objectref === NULL) {
+					throw new NullPointerException();
+				}
+				$object = $references->get($objectref);
+				$value = $object->callSpecial($objectref, $method_name, $method_descriptor, $args, $class_name);
+				if($descriptor->returns != 'V') {
+					$stack->push($value);
+				}
 				break;
 			}
 			case 0xb8: { // invokestatic, throws IncompatibleClassChangeError, UnsatisfiedLinkError, Error
@@ -1121,13 +1160,12 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				// FIXME: correct handling of invokestatic
 				$method = $constants[$index];
 				$method_info = $constants[$method['name_and_type_index']];
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("'$class_name'.'$method_name' : '$method_descriptor'\n");
+				//print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1145,13 +1183,12 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				// FIXME: correct handling of invokevirtual
 				$method = $constants[$index];
 				$method_info = $constants[$method['name_and_type_index']];
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("'$class_name'.'$method_name' : '$method_descriptor'\n");
+				//print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1163,7 +1200,7 @@ class Interpreter {
 					throw new NullPointerException();
 				}
 				$object = $references->get($objectref);
-				$value = $object->call($method_name, $method_descriptor, $args);
+				$value = $object->call($method_name, $method_descriptor, $args, $class_name);
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
 				}
@@ -1609,10 +1646,10 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
 				$type = $constants[$index];
-				print_r($type);
+				$class = $constants[$type['name_index']]['bytes'];
 				// FIXME: instantiate
 				$objectref = $references->newref();
-				$object = NULL;
+				$object = $jvm->instantiate($class);
 				$references->set($objectref, $object);
 				$stack->push($objectref);
 				break;
@@ -1648,7 +1685,15 @@ class Interpreter {
 				$type = $constants[$index];
 				$value = $stack->pop();
 				$objectref = $stack->pop();
+				if($objectref === NULL) {
+					throw new NullPointerException();
+				}
+				$object = $references->get($objectref);
 				// FIXME: correct implementation of putfield
+				$field = $constants[$index];
+				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
+				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$object->setField($field_name, $value);
 				break;
 			}
 			case 0xb3: { // putstatic, throws IncompatibleClassChangeError, IllegalAccessError, Error
@@ -1770,11 +1815,11 @@ class InterpreterReferences {
 	}
 	public function set($ref, $value) {
 		$this->references[$ref] = $value;
-		$root->set($ref, $value);
+		$this->root->set($ref, $value);
 	}
 	public function cleanup() {
 		foreach($this->references as $reference => $value) {
-			$root->free($reference);
+			$this->root->free($reference);
 		}
 	}
 	public function newref() {

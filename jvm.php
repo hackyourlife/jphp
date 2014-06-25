@@ -11,15 +11,16 @@ require_once('lib/io/StringInputStream.php');
 require_once('lib/io/DataInputStream.php');
 require_once('lib/jvm/commonexceptions.php');
 require_once('lib/jvm/classfile.php');
+require_once('lib/jvm/javatypes.php');
 require_once('lib/jvm/javaclass.php');
 require_once('lib/jvm/javaclassstatic.php');
-require_once('lib/jvm/javatypes.php');
 require_once('lib/jvm/opcodes.php');
 require_once('lib/jvm/interpreter.php');
 require_once('lib/jvm/jvm.php');
 
 echo('creating jvm...');
 $jvm = new JVM();
+$jvm->initialize();
 echo(" done\n");
 
 //$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));

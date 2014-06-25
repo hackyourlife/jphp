@@ -1,12 +1,12 @@
 <?php
 
 class JavaClassStatic {
-	private $jvm;
 	private $classfile;
 	private $nativemethods;
-	private $fields;
 	private $methods;
 	private $name;
+	public $fields;
+	public $jvm;
 
 	public function __construct(&$jvm, $name, $classfile) {
 		$this->jvm = $jvm;
@@ -22,7 +22,7 @@ class JavaClassStatic {
 				'name' => $name,
 				'descriptor' => $descriptor,
 				'access_flags' => $field['access_flags'],
-				'value' => $this->defaultValue($descriptor)
+				'value' => JVM::defaultValue($descriptor)
 			);
 		}
 		foreach($classfile->methods as $id => $method) {
@@ -46,25 +46,6 @@ class JavaClassStatic {
 		return $this->name;
 	}
 
-	public function defaultValue($descriptor) {
-		switch($descriptor[0]) {
-		case JAVA_FIELDTYPE_BYTE:
-		case JAVA_FIELDTYPE_CHAR:
-		case JAVA_FIELDTYPE_INTEGER:
-		case JAVA_FIELDTYPE_LONG:
-		case JAVA_FIELDTYPE_SHORT:
-		case JAVA_FIELDTYPE_BOOLEAN:
-			return 0;
-		case JAVA_FIELDTYPE_DOUBLE:
-			return (double)0.0;
-		case JAVA_FIELDTYPE_FLOAT:
-			return (float)0.0;
-		case JAVA_FIELDTYPE_CLASS:
-		case JAVA_FIELDTYPE_ARRAY:
-			return NULL;
-		}
-	}
-
 	public function getMethodId($name, $signature) {
 		if(!isset($this->methods[$name][$signature])) {
 			throw new MethodNotFoundException($name, $signature);
@@ -72,9 +53,14 @@ class JavaClassStatic {
 		return $this->methods[$name][$signature];
 	}
 
-	public function getMethod($name, $signature) {
-		$methodId = $this->getMethodId($name, $signature);
-		return $this->classfile->methods[$methodId];
+	public function getMethod($name, $signature, $classname = NULL) {
+		if(($classname !== NULL) && ($classname != $this->name)) {
+			//print("using class $classname [{$this->name}]\n");
+			return $this->jvm->getStatic($classname)->getMethod($name, $signature);
+		} else {
+			$methodId = $this->getMethodId($name, $signature);
+			return $this->classfile->methods[$methodId];
+		}
 	}
 
 	public function isNative($method) {
@@ -95,6 +81,26 @@ class JavaClassStatic {
 		$this->fields[$name]->value = $value;
 	}
 
+	public function dump() {
+		$count = count($this->fields);
+		print("$count local variables\n");
+		foreach($this->fields as $name => $value) {
+			ob_start();
+			var_dump($value->value);
+			$v = trim(ob_get_clean());
+			print("$name: $v\n");
+		}
+	}
+
+	public function getInterpreter($classname = NULL) {
+		if(($classname !== NULL) && ($classname != $this->name)) {
+			$classfile = $this->jvm->getStatic($classname)->getClass();
+			return new Interpreter($this->jvm, $classfile);
+		} else {
+			return new Interpreter($this->jvm, $this->classfile);
+		}
+	}
+
 	public function call($name, $signature, $args = NULL) {
 		$method = $this->getMethod($name, $signature);
 		$native = $this->isNative($method);
@@ -109,7 +115,11 @@ class JavaClassStatic {
 		return $result;
 	}
 
-	public function instantiate() {
+	public function getClass() {
+		return $this->classfile;
+	}
+
+	public function &instantiate() {
 		$instance = new JavaClassInstance($this);
 		return $instance;
 	}
