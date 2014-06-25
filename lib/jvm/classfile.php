@@ -124,7 +124,11 @@ class JavaClass {
 					break;
 				case JAVA_CONSTANT_UTF8:
 					$entry['length'] = $in->readShort();
-					$entry['bytes'] = $in->read($entry['length']);
+					if($entry['length'] == 0) {
+						$entry['bytes'] = '';
+					} else {
+						$entry['bytes'] = $in->read($entry['length']);
+					}
 					break;
 				default:
 					throw new Exception(sprintf('Unknown constant pool entry type: %d', $type));
@@ -158,7 +162,11 @@ class JavaClass {
 			$attribute = array();
 			$attribute['attribute_name_index'] = $in->readShort();
 			$attribute['attribute_length'] = $in->readInt();
-			$attribute['info'] = $in->read($attribute['attribute_length']);
+			if($attribute['attribute_length'] != 0) {
+				$attribute['info'] = $in->read($attribute['attribute_length']);
+			} else {
+				$attribute['info'] = NULL;
+			}
 			$attributes[] = $attribute;
 		}
 		return $attributes;

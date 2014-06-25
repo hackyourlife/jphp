@@ -13,7 +13,7 @@ class Interpreter {
 		$this->jvm = $jvm;
 		$this->classfile = $classfile;
 		$this->stack = new ArgumentStack();
-		$this->references = new InterpreterReferences();
+		$this->references = new InterpreterReferences($jvm->getReferences());
 		$this->variables = array();
 		$this->pc = 0;
 		$this->finished = false;
@@ -104,6 +104,10 @@ class Interpreter {
 
 	public function getResult() {
 		return $this->result;
+	}
+
+	public function cleanup() {
+		$this->references->cleanup();
 	}
 
 	public function execute($steps = 0) {
@@ -1118,6 +1122,22 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
 				// FIXME: correct handling of invokestatic
+				$method = $constants[$index];
+				$method_info = $constants[$method['name_and_type_index']];
+				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
+				$method_name = $constants[$method_info['name_index']]['bytes'];
+				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
+				print("'$class_name'.'$method_name' : '$method_descriptor'\n");
+				$descriptor = Interpreter::parseDescriptor($method_descriptor);
+				$argc = count($descriptor->args);
+				$args = array();
+				for($i = 0; $i < $argc; $i++) {
+					$args[] = $stack->pop();
+				}
+				$value = $jvm->call($class_name, $method_name, $method_descriptor, $args);
+				if($descriptor->returns != 'V') {
+					$stack->push($value);
+				}
 				break;
 			}
 			case 0xb6: { // invokevirtual, throws IncompatibleClassChangeError, NullPointerException, WrongMethodTypeException, AbstractMethodError, UnsatisfiedLinkError
@@ -1139,8 +1159,14 @@ class Interpreter {
 					$args[] = $stack->pop();
 				}
 				$objectref = $stack->pop();
+				if($objectref === NULL) {
+					throw new NullPointerException();
+				}
 				$object = $references->get($objectref);
 				$value = $object->call($method_name, $method_descriptor, $args);
+				if($descriptor->returns != 'V') {
+					$stack->push($value);
+				}
 				break;
 			}
 			case 0x80: { // ior
@@ -1728,18 +1754,30 @@ class ArgumentStack {
 class InterpreterReferences {
 	private $references = array();
 	private $nextref = 0;
+	private $root;
+	public function __construct($root) {
+		$this->root = $root;
+	}
 	public function dump() {
 		print_r($this->references);
 	}
 	public function get($ref) {
-		if(!isset($this->references[$ref]))
-			throw new Exception('reference not found!');
+		if(!isset($this->references[$ref])) {
+			$object = $this->root->useref($ref);
+			$this->references[$ref] = $object;
+		}
 		return $this->references[$ref];
 	}
 	public function set($ref, $value) {
 		$this->references[$ref] = $value;
+		$root->set($ref, $value);
+	}
+	public function cleanup() {
+		foreach($this->references as $reference => $value) {
+			$root->free($reference);
+		}
 	}
 	public function newref() {
-		return $this->nextref++;
+		return $this->root->newref();
 	}
 }

@@ -1,5 +1,15 @@
 <?php
 
+class NullPointerException extends Exception {
+	public function __construct($msg = NULL) {
+		if($msg !== NULL) {
+			parent::__construct($null);
+		} else {
+			parent::__construct();
+		}
+	}
+}
+
 class ClassNotFoundException extends Exception {
 	public function __construct($name) {
 		parent::__construct("Class not found: $name");
@@ -21,5 +31,11 @@ class NoCodeSegmentException extends Exception {
 class NoSuchFieldException extends Exception {
 	public function __construct($name) {
 		parent::__construct("Field not found: $name");
+	}
+}
+
+class NoSuchReferenceException extends Exception {
+	public function __construct($name) {
+		parent::__construct("Reference not found: $name");
 	}
 }

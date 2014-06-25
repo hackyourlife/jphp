@@ -6,13 +6,15 @@ class JavaClassStatic {
 	private $nativemethods;
 	private $fields;
 	private $methods;
+	private $name;
 
-	public function __construct(&$jvm, $classfile) {
+	public function __construct(&$jvm, $name, $classfile) {
 		$this->jvm = $jvm;
 		$this->classfile = $classfile;
 		$this->nativemethods = array();
 		$this->fields = array();
 		$this->methods = array();
+		$this->name = $name;
 		foreach($classfile->fields as $field) {
 			$name = $classfile->constant_pool[$field['name_index']]['bytes'];
 			$descriptor = $classfile->constant_pool[$field['descriptor_index']]['bytes'];
@@ -38,6 +40,10 @@ class JavaClassStatic {
 			$this->call('<clinit>', '()V');
 		} catch(MethodnotFoundException $e) {
 		}
+	}
+
+	public function getName() {
+		return $this->name;
 	}
 
 	public function defaultValue($descriptor) {
@@ -71,6 +77,10 @@ class JavaClassStatic {
 		return $this->classfile->methods[$methodId];
 	}
 
+	public function isNative($method) {
+		return $method['access_flags'] & JAVA_ACC_NATIVE ? true : false;
+	}
+
 	public function getField($name) {
 		if(!isset($this->fields[$name])) {
 			throw new NoSuchFieldException($name);
@@ -87,10 +97,16 @@ class JavaClassStatic {
 
 	public function call($name, $signature, $args = NULL) {
 		$method = $this->getMethod($name, $signature);
+		$native = $this->isNative($method);
+		if($native) {
+			return $this->jvm->callNative($this, $name, $signature, $args);
+		}
 		$interpreter = new Interpreter($this->jvm, $this->classfile);
 		$interpreter->setMethod($method, $args);
 		$pc = $interpreter->execute();
-		return $interpreter->getResult();
+		$result = $interpreter->getResult();
+		$interpreter->cleanup();
+		return $result;
 	}
 
 	public function instantiate() {
