@@ -8,6 +8,8 @@ class Interpreter {
 	private	$references;
 	private $variables;
 	private $result;
+	private $exception;
+	private $trace;
 
 	private static $debug = 1;
 
@@ -20,6 +22,8 @@ class Interpreter {
 		$this->pc = 0;
 		$this->finished = false;
 		$this->result = false;
+		$this->exception = false;
+		$this->trace = new StackTrace();
 	}
 
 	public static function parseDescriptor($descriptor) {
@@ -112,6 +116,14 @@ class Interpreter {
 		}
 	}
 
+	public function setTrace($trace) {
+		$this->trace = $trace;
+	}
+
+	public function getTrace() {
+		return $this->trace;
+	}
+
 	public function getResult() {
 		return $this->result;
 	}
@@ -121,10 +133,11 @@ class Interpreter {
 	}
 
 	public function execute($steps = 0) {
-		$steps = 120;
 		global $MNEMONICS;
 		$code_length = $this->code_length;
 		$i = 0;
+		$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
+		$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
 		while(true) {
 			if($steps != 0 && $i > $steps) {
 				print("interrupting execution\n");
@@ -136,8 +149,6 @@ class Interpreter {
 			}
 
 			if(static::$debug > 1) {
-				$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
-				$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
 				print("--------- $class:$method --------\n");
 				print("stack:\n");
 				$this->stack->dump();
@@ -152,13 +163,14 @@ class Interpreter {
 			}
 
 			try {
-				$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
+				$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->exception, $this->trace, $this->jvm, $class, $method);
 				$i++;
 			} catch(Exception $e) {
-				$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
-				$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
 				print("[ERROR] exception in $class:$method\n");
-				throw $e;
+				$this->trace->show();
+				printException($e);
+				exit(0);
+				//throw $e;
 			}
 
 			// DEBUG
@@ -175,13 +187,24 @@ class Interpreter {
 				if(static::$debug > 1) {
 					print("=====> RETURN\n");
 				}
+				if($this->exception) {
+					$exception = $this->references->get($this->result);
+					$trace = new StackTrace();
+					$class = $exception->findMethodClass('getMessage', '()Ljava/lang/String;');
+					$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
+					$message = $this->references->get($messageref);
+					print("[ERROR] uncaught {$exception->getName()}: {$message->getString()}\n");
+					$this->trace->show();
+					exit(0);
+					//throw new Exception();
+				}
 				return $this->pc;
 			}
 		}
 		return $this->pc;
 	}
 
-	public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$jvm) {
+	public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
 		$bytes = 1;
 		switch($code[$pc]) {
 			case 0x32: { // aaload; throws NullPointerException, ArrayIndexOutOfBoundsException
@@ -296,9 +319,9 @@ class Interpreter {
 				if($objectref === NULL) {
 					throw new NullPointerException();
 				}
-				$object = $references->get($objectref);
-				throw new Exception($object->call('getMessage', '()Ljava/lang/String;'));
+				$result = $objectref;
 				$finished = true;
+				$exception = true;
 				break; // FIXME: EXCEPTION
 			}
 			case 0x33: { // baload, throws NullPointerException, ArrayIndexOutOfBoundsException
@@ -350,6 +373,7 @@ class Interpreter {
 				if($objectref == NULL) {
 					$stack->push($objectref);
 				} else {
+					throw new Exception('not implemented');
 					// FIXME
 				}
 				break;
@@ -1142,10 +1166,15 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
 				$objectref = $stack->pop();
-				$result = 0;
-				// FIXME: correct handling of instanceof
+				if($objectref === NULL) {
+					$result = 0;
+				} else {
+					$object = $references->get($objectref);
+					$T = $jvm->getStatic($constants[$constants[$index]['name_index']]['bytes']);
+					$result = $object->isInstanceOf($T) ? 1 : 0;
+					print("[INSTANCEOF] {$object->getName()} instanceof {$T->getName()} = $result\n");
+				}
 				$stack->push($result);
-				throw new Exception('not implemented');
 				break;
 			}
 			case 0xba: { // invokedynamic, throws WrongMethodTypeException, BootstrapMethodError
@@ -1178,7 +1207,7 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				//print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1191,7 +1220,9 @@ class Interpreter {
 					throw new NullPointerException();
 				}
 				$object = $references->get($objectref);
-				$value = $object->callSpecial($method_name, $method_descriptor, $args, $class_name);
+				$trace->push($this_class, $this_method, $pc);
+				$value = $object->callSpecial($method_name, $method_descriptor, $args, $class_name, $trace);
+				$trace->pop();
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
 				}
@@ -1207,7 +1238,7 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				//print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1215,7 +1246,9 @@ class Interpreter {
 					$args[] = $stack->pop();
 				}
 				$args = array_reverse($args);
-				$value = $jvm->call($class_name, $method_name, $method_descriptor, $args);
+				$trace->push($this_class, $this_method, $pc);
+				$value = $jvm->call($class_name, $method_name, $method_descriptor, $args, $trace);
+				$trace->pop();
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
 				}
@@ -1231,7 +1264,7 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				//print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1244,7 +1277,9 @@ class Interpreter {
 					throw new NullPointerException();
 				}
 				$object = $references->get($objectref);
-				$value = $object->call($method_name, $method_descriptor, $args, $class_name);
+				$trace->push($this_class, $this_method, $pc);
+				$value = $object->call($method_name, $method_descriptor, $args, $class_name, $trace);
+				$trace->pop();
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
 				}
@@ -1563,6 +1598,7 @@ class Interpreter {
 				break;
 			}
 			case 0xab: { // lookupswitch
+				throw new Exception('lookupswitch');
 				$boundary = ((int)($pc / 4)) * 4;
 				$diff = $pc - $boundary;
 				$offset = 3 - $diff; // FIXME: offset
@@ -1826,6 +1862,7 @@ class Interpreter {
 				break;
 			}
 			case 0xaa: { // tableswitch
+				throw new Exception('tableswitch');
 				$boundary = ((int)($pc / 4)) * 4;
 				$diff = $pc - $boundary;
 				$offset = 3 - $diff; // FIXME: offset
@@ -1845,6 +1882,9 @@ class Interpreter {
 				$index = $stack->pop();
 				// FIXME: correct implementation of tableswitch
 				break;
+			}
+			case 0xc4: { // wide
+				throw new Exception('not implemented');
 			}
 			default: {
 				throw new Exception("unknown opcode: " . $code[$pc]);

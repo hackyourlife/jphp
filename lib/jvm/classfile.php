@@ -70,7 +70,7 @@ class JavaClass {
 		$this->major_version = $in->readShort();
 		$this->constant_pool_count = $in->readShort();
 		$this->constant_pool = self::readConstantPool($in, $this->constant_pool_count - 1);
-		$this->acces_flags = $in->readShort();
+		$this->access_flags = $in->readShort();
 		$this->this_class = $in->readShort();
 		$this->super_class = $in->readShort();
 		$this->interfaces_count = $in->readShort();

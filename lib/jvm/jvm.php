@@ -114,7 +114,9 @@ class JVM {
 		$ref = $this->references->newref();
 		$this->references->set($ref, $class);
 		$class->setReference($ref);
-		$class->callSpecial('<init>', '()V');
+		$trace = new StackTrace();
+		$trace->push('org/hackyourlife/jvm/JVM', 'load', 0, true);
+		$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
 		$class->info = (object)array(
 			'name' => $classname
 		);
@@ -135,15 +137,20 @@ class JVM {
 		//print_r($c->attributes);
 	}
 
-	public function callNative($class, $method, $signature, $args) {
-		$classname = $class->getName();
+	public function callNative($class, $method, $signature, $args, $classname, $trace) {
 		if(!isset($this->native[$classname])) {
-			require_once("lib/native/$classname.php");
+			$path = "lib/native/$classname.php";
+			if(!file_exists($path)) {
+				var_dump($path);
+				print("$classname:$method$signature\n");
+				throw new Exception();
+			}
+			require_once($path);
 			$this->native[$classname] = true;
 		}
 		$path = str_replace('/', '_', $classname);
 		$call = "Java_{$path}_$method";
-		return $call($this, $class, $args);
+		return $call($this, $class, $args, $trace);
 	}
 
 	public function getClass($classname) {
@@ -156,9 +163,9 @@ class JVM {
 		return $this->classes[$classname];
 	}
 
-	public function call($classname, $method, $signature, $args = NULL) {
+	public function call($classname, $method, $signature, $args = NULL, $trace = NULL) {
 		$this->load($classname);
-		return $this->classes[$classname]->call($method, $signature, $args);
+		return $this->classes[$classname]->call($method, $signature, $args, $trace);
 	}
 
 	public function instantiate($classname) {

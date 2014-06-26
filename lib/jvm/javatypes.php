@@ -64,3 +64,66 @@ class JavaArray extends JavaObject {
 		return 'Array';
 	}
 }
+
+class StackTraceElement {
+	private $class;
+	private $method;
+	private $instruction;
+	private $native;
+
+	public function __construct($class, $method, $instruction, $native = false) {
+		$this->class = $class;
+		$this->method = $method;
+		$this->instruction = $instruction;
+		$this->native = $native;
+	}
+
+	public function getClass() {
+		return $this->class;
+	}
+
+	public function getMethod() {
+		return $this->method;
+	}
+
+	public function getInstruction() {
+		return $this->instruction;
+	}
+
+	public function isNative() {
+		return $this->native;
+	}
+}
+
+class StackTrace {
+	private $trace;
+
+	public function __construct() {
+		$this->trace = array();
+	}
+
+	public function push($class, $method, $instruction, $native = false) {
+		array_push($this->trace, new StackTraceElement($class, $method, $instruction, $native));
+	}
+
+	public function pop() {
+		return array_pop($this->trace);
+	}
+
+	public function getTrace() {
+		return array_reverse($this->trace);
+	}
+
+	public function show() {
+		$trace = $this->getTrace();
+		$i = 1;
+		foreach($trace as $item) {
+			$class = str_replace('/', '.', $item->getClass());
+			$method = $item->getMethod();
+			$instruction = $item->getInstruction();
+			$at = $item->isNative() ? 'native' : "PC=$instruction";
+			print("#$i $class.$method($at)\n");
+			$i++;
+		}
+	}
+}

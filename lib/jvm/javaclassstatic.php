@@ -5,6 +5,8 @@ class JavaClassStatic {
 	private $nativemethods;
 	private $methods;
 	private $name;
+	private $interfaces;
+	private $access_flags;
 	public $super;
 	public $fields;
 	public $jvm;
@@ -15,7 +17,9 @@ class JavaClassStatic {
 		$this->nativemethods = array();
 		$this->fields = array();
 		$this->methods = array();
+		$this->interfaces = array();
 		$this->name = $name;
+		$this->access_flags = $classfile->access_flags;
 		foreach($classfile->fields as $field) {
 			$name = $classfile->constant_pool[$field['name_index']]['bytes'];
 			$descriptor = $classfile->constant_pool[$field['descriptor_index']]['bytes'];
@@ -40,13 +44,54 @@ class JavaClassStatic {
 		} else {
 			$this->super = NULL;
 		}
+		foreach($classfile->interfaces as $interface) {
+			$name = $classfile->constant_pool[$classfile->constant_pool[$interface]['name_index']]['bytes'];
+			$this->interfaces[$name] = $interface;
+		}
 	}
 
 	public function initialize() {
+		$trace = new StackTrace();
+		$trace->push('org/hackyourlife/jvm/JavaClassStatic', 'initialize', 0, true);
 		try {
-			$this->call('<clinit>', '()V');
+			$this->call('<clinit>', '()V', NULL, $trace);
 		} catch(MethodnotFoundException $e) {
 		}
+	}
+
+	public function isInterface() {
+		return ($this->access_flags & JAVA_ACC_INTERFACE) ? true : false;
+	}
+
+	public function isAbstract() {
+		return ($this->access_flags & JAVA_ACC_ABSTRACT) ? true : false;
+	}
+
+	public function getAccessFlags() {
+		return $this->access_flags;
+	}
+
+	public function isInstanceOf($class) {
+		if($this->getName() == $class->getName()) {
+			return true;
+		}
+		if($class->isInterface()) {
+			return $this->hasInterface($class);
+		}
+		if($this->super !== NULL) {
+			return $this->super->isInstanceOf($class);
+		}
+		return false;
+	}
+
+	public function hasInterface($class) {
+		if(isset($this->interfaces[$class->getName()])) {
+			return true;
+		}
+		if($this->super !== NULL) {
+			return $this->super->hasInterface($class);
+		}
+		return false;
 	}
 
 	public function getName() {
@@ -62,12 +107,21 @@ class JavaClassStatic {
 
 	public function getMethod($name, $signature, $classname = NULL) {
 		if(($classname !== NULL) && ($classname != $this->name)) {
-			//print("using class $classname [{$this->name}]\n");
 			return $this->jvm->getStatic($classname)->getMethod($name, $signature);
 		} else {
 			$methodId = $this->getMethodId($name, $signature);
 			return $this->classfile->methods[$methodId];
 		}
+	}
+
+	public function findMethodClass($name, $signature) {
+		if(isset($this->methods[$name][$signature])) {
+			return $this->getName();
+		}
+		if($this->super !== NULL) {
+			return $this->super->findMethodClass($name, $signature);
+		}
+		return NULL;
 	}
 
 	public function isNative($method) {
@@ -122,14 +176,17 @@ class JavaClassStatic {
 		}
 	}
 
-	public function call($name, $signature, $args = NULL) {
+	public function call($name, $signature, $args = NULL, $trace = NULL) {
 		$method = $this->getMethod($name, $signature);
 		$native = $this->isNative($method);
 		if($native) {
-			return $this->jvm->callNative($this, $name, $signature, $args);
+			return $this->jvm->callNative($this, $name, $signature, $args, $this->getName(), $trace);
 		}
 		$interpreter = new Interpreter($this->jvm, $this->classfile);
 		$interpreter->setMethod($method, $args);
+		if($trace !== NULL) {
+			$interpreter->setTrace($trace);
+		}
 		$pc = $interpreter->execute();
 		$result = $interpreter->getResult();
 		$interpreter->cleanup();

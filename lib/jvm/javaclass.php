@@ -18,10 +18,10 @@ class JavaClassInstance extends JavaObject {
 			$reference = $this->staticclass->jvm->references->newref();
 			$this->staticclass->jvm->references->set($reference, $this->super);
 			$this->super->setReference($reference);
-			try {
-				$this->super->callSpecial('<init>', '()V');
-			} catch(MethodNotFoundException $e) {
-			}
+			//try {
+			//	$this->super->callSpecial('<init>', '()V');
+			//} catch(MethodNotFoundException $e) {
+			//}
 		} else {
 			$this->super = NULL;
 		}
@@ -37,6 +37,10 @@ class JavaClassInstance extends JavaObject {
 
 	public function getName() {
 		return $this->staticclass->getName();
+	}
+
+	public function isInstanceOf($name) {
+		return $this->staticclass->isInstanceOf($name);
 	}
 
 	public function getField($name) {
@@ -93,20 +97,29 @@ class JavaClassInstance extends JavaObject {
 
 	public function dump() {
 		$count = count($this->fields);
-		print("$count local variables\n");
 		foreach($this->fields as $name => $value) {
 			ob_start();
 			var_dump($value->value);
 			$v = trim(ob_get_clean());
 			print("$name: $v\n");
 		}
+		if($this->super !== NULL) {
+			$this->super->dump();
+		}
 	}
 
-	public function call($name, $signature, $args = NULL, $classname = NULL) {
+	public function findMethodClass($name, $signature) {
+		return $this->staticclass->findMethodClass($name, $signature);
+	}
+
+	public function call($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
+		if($trace == NULL) {
+			throw new Exception();
+		}
 		$method = $this->staticclass->getMethod($name, $signature, $classname);
 		$native = $this->staticclass->isNative($method);
 		if($native) {
-			return $this->staticclass->jvm->callNative($this, $name, $signature, $args);
+			return $this->staticclass->jvm->callNative($this, $name, $signature, $args, $classname, $trace);
 		}
 		$interpreter = $this->staticclass->getInterpreter($classname);
 		$a = array($this->getReference());
@@ -116,16 +129,19 @@ class JavaClassInstance extends JavaObject {
 			}
 		}
 		$interpreter->setMethod($method, $a, true);
+		if($trace !== NULL) {
+			$interpreter->setTrace($trace);
+		}
 		$pc = $interpreter->execute();
 		$result = $interpreter->getResult();
 		$interpreter->cleanup();
 		return $result;
 	}
 
-	public function callSpecial($name, $signature, $args = NULL, $classname = NULL) {
+	public function callSpecial($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
 		//$ref = $this->staticclass->jvm->references->getReference($this);
 		//var_dump($ref);
-		return $this->call($name, $signature, $args, $classname);
+		return $this->call($name, $signature, $args, $classname, $trace);
 	}
 }
 
@@ -147,11 +163,17 @@ class JavaString extends JavaClassInstance {
 	}
 
 	public function initialize() {
-		$this->callSpecial('<init>', '([C)V', array($this->dataref));
+		$trace = new StackTrace();
+		$trace->push('org/hackyourlife/jvm/JavaString', 'initialize', 0, true);
+		$this->callSpecial('<init>', '([C)V', array($this->dataref), NULL, $trace);
 	}
 
 	public function finalize() {
 		parent::finalize();
 		$this->jvm->references->free($this->dataref);
+	}
+
+	public function getString() {
+		return $this->string;
 	}
 }

@@ -1,18 +1,13 @@
 <?php
 
-function Java_java_lang_System_registerNatives(&$jvm, &$class, $args) {
+function Java_java_lang_System_registerNatives(&$jvm, &$class, $args, $trace) {
 	$printstream = $jvm->instantiate('java/io/PrintStream');
 	$ref = $jvm->references->newref();
 	$jvm->references->set($ref, $printstream);
 	$printstream->setReference($ref);
-	print("initializing\n");
-	try {
-		$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array(NULL));
-	//} catch(MethodNotFoundException $e) {
-	} catch(Exception $e) {
-		printException($e);
-	}
-	print("done\n");
+	$trace->push('java/lang/System', 'registerNatives', 0, true);
+	$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array(NULL), NULL, $trace);
+	$trace->pop();
 	$class->setField('out', $ref);
 }
 
