@@ -21,5 +21,6 @@ function Java_java_lang_Class_getPrimitiveClass(&$jvm, &$class, $args) {
 	$name = $jvm->references->get($args[0]);
 	$value = $jvm->references->get($name->getField('value'));
 	var_dump($value->string());
+	return NULL; // FIXME
 	throw new Exception('not implemented');
 }

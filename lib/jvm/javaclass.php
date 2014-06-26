@@ -41,14 +41,23 @@ class JavaClassInstance extends JavaObject {
 
 	public function getField($name) {
 		if(!isset($this->fields[$name])) {
-			throw new NoSuchFieldException($name);
+			if($this->super !== NULL) {
+				return $this->super->getField($name);
+			} else {
+				throw new NoSuchFieldException($name);
+			}
 		}
 		return $this->fields[$name]->value;
 	}
 
 	public function setField($name, $value) {
 		if(!isset($this->fields[$name])) {
-			throw new NoSuchFieldException($name);
+			if($this->super !== NULL) {
+				$this->super->setField($name, $value);
+				return;
+			} else {
+				throw new NoSuchFieldException($name);
+			}
 		}
 		$type = $this->fields[$name]->descriptor[0];
 		if(($type == JAVA_FIELDTYPE_ARRAY) || ($type == JAVA_FIELDTYPE_CLASS)) {

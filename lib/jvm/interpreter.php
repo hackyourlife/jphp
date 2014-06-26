@@ -150,8 +150,16 @@ class Interpreter {
 				$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
 				printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
 			}
-			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
-			$i++;
+
+			try {
+				$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
+				$i++;
+			} catch(Exception $e) {
+				$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
+				$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
+				print("[ERROR] exception in $class:$method\n");
+				throw $e;
+			}
 
 			// DEBUG
 			if(static::$debug > 1) {
@@ -1805,6 +1813,7 @@ class Interpreter {
 			case 0x11: { // sipush
 				$byte1 = $code[$pc + 1];
 				$byte2 = $code[$pc + 2];
+				$bytes += 2;
 				$value = s16(($byte1 << 8) | $byte2);
 				$stack->push($value);
 				break;
