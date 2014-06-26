@@ -8,6 +8,7 @@ class JVM {
 	private $threads;
 	private $native;
 	public $references;
+	private $classes;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
@@ -15,6 +16,7 @@ class JVM {
 		$this->threads = array();
 		$this->references = new References();
 		$this->native = array();
+		$this->classes = array();
 		foreach($params as $name => $value) {
 			switch($name) {
 			case 'classpath':
@@ -36,14 +38,31 @@ class JVM {
 		//$array = $this->references->get($string->getField('value'));
 		//var_dump($array->toString());
 		//$this->references->free($ref);
+		$this->loadSystemClass('java/lang/Object');
+		$this->loadSystemClass('java/lang/Class');
+		$this->load('java/lang/String');
+		$this->load('java/lang/System');
+		exit(0);
+		//$object = $this->instantiate('java/lang/Object');
+		//$ref = $this->references->newref();
+		//$this->references->set($ref, $object);
+		//$object->callSpecial($ref, '<init>', '()V');
+		//exit(0);
 		$object = $this->instantiate('characters');
 		$ref = $this->references->newref();
 		$this->references->set($ref, $object);
-		$object->callSpecial($ref, '<init>', '()V');
+		$object->setReference($ref);
+		$object->callSpecial('<init>', '()V');
 		$object->dump();
 		$this->getStatic('characters')->dump();
 		$this->references->free($ref);
 		exit(0);
+	}
+
+	public function showClasses() {
+		foreach($this->classes as $name => $class) {
+			print("$name\n");
+		}
 	}
 
 	private function locateClass($classname) {
@@ -57,7 +76,7 @@ class JVM {
 		return false;
 	}
 
-	public function load($classname) {
+	private function loadSystemClass($classname) {
 		if(isset($this->classes[$classname]))
 			return;
 		print("[JVM] loading '$classname'\n");
@@ -69,6 +88,41 @@ class JVM {
 		$file->close();
 		$this->classes[$classname] = new JavaClassStatic($this, $classname, $c);
 		$this->classes[$classname]->initialize();
+	}
+
+	public function load($classname) {
+		if(is_array($classname)) {
+			throw new Exception();
+		}
+		if(isset($this->classes[$classname]))
+			return;
+		print("[JVM] loading '$classname'\n");
+		if($classname == 'java/lang/Class') {
+			$this->showClasses();
+			throw new Exception();
+		}
+		$filename = $this->locateClass($classname);
+		if($filename === false)
+			throw new ClassNotFoundException($classname);
+		$file = new FileInputStream($filename);
+		$c = new JavaClass($file);
+		$file->close();
+		$this->classes[$classname] = new JavaClassStatic($this, $classname, $c);
+
+		// register class
+		$class = $this->instantiate('java/lang/Class');
+		$ref = $this->references->newref();
+		$this->references->set($ref, $class);
+		$class->setReference($ref);
+		$class->callSpecial('<init>', '()V');
+		$class->info = (object)array(
+			'name' => $classname
+		);
+		$this->classinstances[$classname] = $ref;
+
+		// initialize class
+		$this->classes[$classname]->initialize();
+
 		//echo('constant_pool: ');
 		//print_r($c->constant_pool);
 		//echo('interfaces: ');
@@ -89,7 +143,12 @@ class JVM {
 		}
 		$path = str_replace('/', '_', $classname);
 		$call = "Java_{$path}_$method";
-		$call($this, $class, $args);
+		return $call($this, $class, $args);
+	}
+
+	public function getClass($classname) {
+		$this->load($classname);
+		return $this->classinstances[$classname];
 	}
 
 	public function &getStatic($classname) {
@@ -149,7 +208,7 @@ class References {
 	}
 
 	public function set($ref, $value) {
-		print("[GC] allocating object #$ref\n");
+		print("[GC] allocating object #$ref ({$value->getName()})\n");
 		if(isset($this->references[$ref])) {
 			//$this->references[$ref]->refcount++;
 			$this->references[$ref]->value = $value;

@@ -9,6 +9,8 @@ class Interpreter {
 	private $variables;
 	private $result;
 
+	private static $debug = 1;
+
 	public function __construct(&$jvm, $classfile) {
 		$this->jvm = $jvm;
 		$this->classfile = $classfile;
@@ -133,17 +135,38 @@ class Interpreter {
 				return false;
 			}
 
-			$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
-			printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
+			if(static::$debug > 1) {
+				$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
+				$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
+				print("--------- $class:$method --------\n");
+				print("stack:\n");
+				$this->stack->dump();
+				print("variables:\n");
+				foreach($this->variables as $i => $v) {
+					printf("%02d => %s\n", $i, $v);
+				}
+			}
+			if(static::$debug) {
+				$mnemonic = isset($MNEMONICS[$this->code[$this->pc]]) ? $MNEMONICS[$this->code[$this->pc]] : 'unknown';
+				printf("[%08X] %02X %s\n", $this->pc, $this->code[$this->pc], $mnemonic);
+			}
 			$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->jvm);
 			$i++;
 
 			// DEBUG
-			//$this->stack->dump();
-			//print_r($this->variables);
-			//printf("---------------\n");
+			if(static::$debug > 1) {
+				print("stack:\n");
+				$this->stack->dump();
+				print("variables:\n");
+				foreach($this->variables as $i => $v) {
+					printf("%02d => %s\n", $i, $v);
+				}
+			}
 
 			if($this->finished) {
+				if(static::$debug > 1) {
+					print("=====> RETURN\n");
+				}
 				return $this->pc;
 			}
 		}
@@ -216,12 +239,19 @@ class Interpreter {
 			}
 			case 0xb0: { // areturn, throws IllegalMonitorStateException
 				$result = $stack->pop();
+				$references->persistent($result);
 				$finished = true;
 				break;
 			}
 			case 0xbe: { // arraylength, throws NullPointerException
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					throw new NullPointerException();
+				}
 				$array = $references->get($arrayref);
+				if($array instanceof JavaClassInstance) {
+					throw new Exception("#$arrayref = {$array->getName()}");
+				}
 				$length = $array->length;
 				$stack->push($length);
 				break;
@@ -1033,7 +1063,7 @@ class Interpreter {
 				$branch = s16(($branchbyte1 << 8) | $branchbyte2);
 				$bytes += 2;
 				$value = $stack->pop();
-				if($value === NULL) {
+				if($value !== NULL) {
 					$pc += $branch;
 					$bytes = 0;
 				}
@@ -1045,7 +1075,7 @@ class Interpreter {
 				$branch = s16(($branchbyte1 << 8) | $branchbyte2);
 				$bytes += 2;
 				$value = $stack->pop();
-				if($value !== NULL) {
+				if($value === NULL) {
 					$pc += $branch;
 					$bytes = 0;
 				}
@@ -1107,6 +1137,7 @@ class Interpreter {
 				$result = 0;
 				// FIXME: correct handling of instanceof
 				$stack->push($result);
+				throw new Exception('not implemented');
 				break;
 			}
 			case 0xba: { // invokedynamic, throws WrongMethodTypeException, BootstrapMethodError
@@ -1115,6 +1146,7 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 4;
 				// FIXME: correct handling of invokedynamic
+				throw new Exception('not implemented');
 				break;
 			}
 			case 0xb9: { // invokeinterface, throws IncompatibleClassChangeError, NullPointerException, IllegalAccessError, AbstractMethodError, UnsatisfiedLinkError
@@ -1125,6 +1157,7 @@ class Interpreter {
 				$bytes += 4;
 				// FIXME: correct handling of invokeinterface
 				$objectref = $stack->pop();
+				throw new Exception('not implemented');
 				break;
 			}
 			case 0xb7: { // invokespecial, throws IncompatibleClassChangeError, NullPointerException, IllegalAccessError, AbstractMethodError, UnsatisfiedLinkError
@@ -1137,19 +1170,20 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
 				for($i = 0; $i < $argc; $i++) {
 					$args[] = $stack->pop();
 				}
+				$args = array_reverse($args);
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
 					throw new NullPointerException();
 				}
 				$object = $references->get($objectref);
-				$value = $object->callSpecial($objectref, $method_name, $method_descriptor, $args, $class_name);
+				$value = $object->callSpecial($method_name, $method_descriptor, $args, $class_name);
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
 				}
@@ -1165,13 +1199,14 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
 				for($i = 0; $i < $argc; $i++) {
 					$args[] = $stack->pop();
 				}
+				$args = array_reverse($args);
 				$value = $jvm->call($class_name, $method_name, $method_descriptor, $args);
 				if($descriptor->returns != 'V') {
 					$stack->push($value);
@@ -1188,13 +1223,14 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
 				for($i = 0; $i < $argc; $i++) {
 					$args[] = $stack->pop();
 				}
+				$args = array_reverse($args);
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
 					throw new NullPointerException();
@@ -1386,20 +1422,37 @@ class Interpreter {
 				$constant = $constants[$index];
 				switch($constant['type']) { // FIXME
 				case JAVA_CONSTANT_CLASS:
+					$class = $constants[$constant['name_index']]['bytes'];
+					$value = $jvm->getClass($class);
+					break;
 				case JAVA_CONSTANT_FIELDREF:
+					throw new Exception('not implemented: fieldref');
 				case JAVA_CONSTANT_METHODREF:
+					throw new Exception('not implemented: methodref');
 				case JAVA_CONSTANT_INTERFACEMETHODREF:
-					throw new Exception('not implemented');
+					throw new Exception('not implemented: interface');
 				case JAVA_CONSTANT_STRING:
-					$value = $constants[$constant['string_index']]['bytes'];
+					$string = $constants[$constant['string_index']]['bytes'];
+					$instance = new JavaString($jvm, $string);
+					$references->set($instance->getReference(), $instance);
+					$instance->initialize();
+					$value = $instance->getReference();
 					break;
 				case JAVA_CONSTANT_INTEGER:
+					throw new Exception('not implemented: integer');
 				case JAVA_CONSTANT_FLOAT:
+					$value = f32($constant['bytes']);
+					break;
 				case JAVA_CONSTANT_LONG:
+					throw new Exception('not implemented: long');
 				case JAVA_CONSTANT_DOUBLE:
+					throw new Exception('not implemented: double');
 				case JAVA_CONSTANT_NAMEANDTYPE:
+					throw new Exception('not implemented: nameandtype');
 				case JAVA_CONSTANT_UTF8:
-					throw new Exception('not implemented');
+					throw new Exception('not implemented: utf8');
+				default:
+					throw new Exception("not implemented: unknown ({$constant['type']})");
 				}
 				$stack->push($value);
 				break;
@@ -1412,20 +1465,31 @@ class Interpreter {
 				$constant = $constants[$index];
 				switch($constant['type']) { // FIXME
 				case JAVA_CONSTANT_CLASS:
+					$class = $constants[$constant['name_index']]['bytes'];
+					$value = $jvm->getClass($class);
+					break;
 				case JAVA_CONSTANT_FIELDREF:
+					throw new Exception('not implemented: fieldref');
 				case JAVA_CONSTANT_METHODREF:
+					throw new Exception('not implemented: methodref');
 				case JAVA_CONSTANT_INTERFACEMETHODREF:
 					throw new Exception('not implemented');
 				case JAVA_CONSTANT_STRING:
 					$value = $constants[$constant['string_index']]['bytes'];
 					break;
 				case JAVA_CONSTANT_INTEGER:
+					throw new Exception('not implemented: integer');
 				case JAVA_CONSTANT_FLOAT:
+					$value = f32($constant['bytes']);
+					break;
 				case JAVA_CONSTANT_LONG:
 				case JAVA_CONSTANT_DOUBLE:
 				case JAVA_CONSTANT_NAMEANDTYPE:
+					throw new Exception('not implemented: nameandtype');
 				case JAVA_CONSTANT_UTF8:
 					throw new Exception('not implemented');
+				default:
+					throw new Exception("not implemented: unknown ({$constant['type']})");
 				}
 				$stack->push($value);
 				break;
@@ -1650,6 +1714,7 @@ class Interpreter {
 				// FIXME: instantiate
 				$objectref = $references->newref();
 				$object = $jvm->instantiate($class);
+				$object->setReference($objectref);
 				$references->set($objectref, $object);
 				$stack->push($objectref);
 				break;
@@ -1809,17 +1874,22 @@ class InterpreterReferences {
 	public function get($ref) {
 		if(!isset($this->references[$ref])) {
 			$object = $this->root->useref($ref);
-			$this->references[$ref] = $object;
+			$this->references[$ref] = true;
 		}
-		return $this->references[$ref];
+		return $this->root->get($ref);
 	}
 	public function set($ref, $value) {
-		$this->references[$ref] = $value;
+		$this->references[$ref] = true;
 		$this->root->set($ref, $value);
 	}
+	public function persistent($ref) {
+		$this->references[$ref] = false;
+	}
 	public function cleanup() {
-		foreach($this->references as $reference => $value) {
-			$this->root->free($reference);
+		foreach($this->references as $reference => $transient) {
+			if($transient) {
+				$this->root->free($reference);
+			}
 		}
 	}
 	public function newref() {

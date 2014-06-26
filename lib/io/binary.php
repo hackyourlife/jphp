@@ -25,6 +25,15 @@ function s32($u32) {
 	}
 }
 
+function f32($bits) {
+	$s = (($bits >> 31) == 0) ? 1 : -1;
+	$e = (($bits >> 23) & 0xff);
+	$m = ($e == 0) ?
+		($bits & 0x7fffff) << 1 :
+		($bits & 0x7fffff) | 0x800000;
+	return $s * $m * pow(2, $e - 150);
+}
+
 function f64($bits) {
 	$s = (($bits >> 63) == 0) ? 1 : -1;
 	$e = (int)(($bits >> 52) & 0x7ff);

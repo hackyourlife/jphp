@@ -12,15 +12,20 @@ define('JAVA_T_LONG',				(int)11);
 abstract class JavaObject {
 	public function finalize() {
 	}
+	abstract public function getName();
 }
 
 class JavaArray extends JavaObject {
-	private $array = array();
+	public $array;
 	public $length;
 	public $type;
 	public function __construct($length, $type) {
 		$this->length = $length;
 		$this->type = $type;
+		$this->array = array();
+		for($i = 0; $i < $length; $i++) {
+			$this->array[$i] = 0;
+		}
 	}
 	public function get($index) {
 		if(!isset($this->array[$index])) {
@@ -47,5 +52,15 @@ class JavaArray extends JavaObject {
 			$type = $types[$this->type];
 		}
 		return $type . '[' . implode(',', $this->array) . ']';
+	}
+	public function string() {
+		$string = '';
+		foreach($this->array as $char) {
+			$string .= chr($char);
+		}
+		return $string;
+	}
+	public function getName() {
+		return 'Array';
 	}
 }

@@ -12,6 +12,9 @@ define('JAVA_CONSTANT_LONG',			(int) 5);
 define('JAVA_CONSTANT_DOUBLE',			(int) 6);
 define('JAVA_CONSTANT_NAMEANDTYPE',		(int)12);
 define('JAVA_CONSTANT_UTF8',			(int) 1);
+define('JAVA_CONSTANT_METHODHANDLE',		(int)15);
+define('JAVA_CONSTANT_METHODTYPE',		(int)16);
+define('JAVA_CONSTANT_INVOKEDYNAMIC',		(int)18);
 define('JAVA_ACC_PUBLIC',			(int)0x0001);
 define('JAVA_ACC_PRIVATE',			(int)0x0002);
 define('JAVA_ACC_PROTECTED',			(int)0x0004);
@@ -129,6 +132,17 @@ class JavaClass {
 					} else {
 						$entry['bytes'] = $in->read($entry['length']);
 					}
+					break;
+				case JAVA_CONSTANT_METHODHANDLE:
+					$entry['reference_kind'] = $in->readByte();
+					$entry['reference_index'] = $in->readShort();
+					break;
+				case JAVA_CONSTANT_METHODTYPE:
+					$entry['descriptor_index'] = $in->readShort();
+					break;
+				case JAVA_CONSTANT_INVOKEDYNAMIC:
+					$entry['bootstrap_method_attr_index'] = $in->readShort();
+					$entry['name_and_type_index'] = $in->readShort();
 					break;
 				default:
 					throw new Exception(sprintf('Unknown constant pool entry type: %d', $type));

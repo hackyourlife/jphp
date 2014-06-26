@@ -5,11 +5,12 @@ class JavaClassStatic {
 	private $nativemethods;
 	private $methods;
 	private $name;
+	public $super;
 	public $fields;
 	public $jvm;
 
 	public function __construct(&$jvm, $name, $classfile) {
-		$this->jvm = $jvm;
+		$this->jvm = &$jvm;
 		$this->classfile = $classfile;
 		$this->nativemethods = array();
 		$this->fields = array();
@@ -32,6 +33,12 @@ class JavaClassStatic {
 				$this->methods[$name] = array();
 			}
 			$this->methods[$name][$signature] = $id;
+		}
+		if($classfile->super_class !== 0) {
+			$super_name = $classfile->constant_pool[$classfile->constant_pool[$classfile->super_class]['name_index']]['bytes'];
+			$this->super = $jvm->getStatic($super_name);
+		} else {
+			$this->super = NULL;
 		}
 	}
 
@@ -77,6 +84,20 @@ class JavaClassStatic {
 	public function setField($name, $value) {
 		if(!isset($this->fields[$name])) {
 			throw new NoSuchFieldException($name);
+		}
+		$type = $this->fields[$name]->descriptor[0];
+		if(($type == JAVA_FIELDTYPE_ARRAY) || ($type == JAVA_FIELDTYPE_CLASS)) {
+			try {
+				$this->jvm->references->free($this->fields[$name]->value);
+			} catch(NoSuchReferenceException $e) {
+			}
+			if(!is_string($value) && ($value !== NULL)) {
+				try {
+					$this->jvm->references->useref($value);
+				} catch(NoSuchReferenceException $e) {
+					printException($e);
+				}
+			}
 		}
 		$this->fields[$name]->value = $value;
 	}
