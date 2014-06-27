@@ -5,12 +5,12 @@ function Java_java_lang_Class_registerNatives(&$jvm, &$class, $args) {
 }
 
 function Java_java_lang_Class_desiredAssertionStatus0(&$jvm, &$class, $args) {
-	print("desiredAssertionStatus0\n");
+	//print("desiredAssertionStatus0\n");
 	return 0;
 }
 
 function Java_java_lang_Class_getClassLoader0(&$jvm, &$class, $args) {
-	print("getClassLoader0\n");
+	//print("getClassLoader0\n");
 	return NULL;
 }
 

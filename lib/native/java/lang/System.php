@@ -1,14 +1,21 @@
 <?php
 
 function Java_java_lang_System_registerNatives(&$jvm, &$class, $args, $trace) {
+	$stdout = new JavaStandardOutputStream($jvm);
+	$stdoutref = $jvm->references->newref();
+	$jvm->references->set($stdoutref, $stdout);
+	$stdout->setReference($stdoutref);
+
 	$printstream = $jvm->instantiate('java/io/PrintStream');
 	$ref = $jvm->references->newref();
 	$jvm->references->set($ref, $printstream);
 	$printstream->setReference($ref);
 	$trace->push('java/lang/System', 'registerNatives', 0, true);
-	$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array(NULL), NULL, $trace);
+	$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array($stdoutref), NULL, $trace);
 	$trace->pop();
+
 	$class->setField('out', $ref);
+	$class->setField('err', $ref);
 }
 
 function Java_java_lang_System_initProperties(&$jvm, &$class, $args) {

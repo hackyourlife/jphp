@@ -27,36 +27,13 @@ class JVM {
 	}
 
 	public function initialize() {
-		//$this->load('java/lang/System');
-		//print("completely instantiated\n");
-		//var_dump($this->getStatic('java/lang/System')->getField('out'));
-		//$string = $this->instantiate('java/lang/String');
-		//$ref = $this->references->newref();
-		//$this->references->set($ref, $string);
-		//$string->callSpecial($ref, '<init>', '()V');
-		//$string->dump();
-		//$array = $this->references->get($string->getField('value'));
-		//var_dump($array->toString());
-		//$this->references->free($ref);
 		$this->loadSystemClass('java/lang/Object');
 		$this->loadSystemClass('java/lang/Class');
 		$this->load('java/lang/String');
+		$this->load('java/util/HashMap');
 		$this->load('java/lang/System');
-		exit(0);
-		//$object = $this->instantiate('java/lang/Object');
-		//$ref = $this->references->newref();
-		//$this->references->set($ref, $object);
-		//$object->callSpecial($ref, '<init>', '()V');
-		//exit(0);
-		$object = $this->instantiate('characters');
-		$ref = $this->references->newref();
-		$this->references->set($ref, $object);
-		$object->setReference($ref);
-		$object->callSpecial('<init>', '()V');
-		$object->dump();
-		$this->getStatic('characters')->dump();
-		$this->references->free($ref);
-		exit(0);
+		$this->load('sun/misc/Unsafe');
+		return;
 	}
 
 	public function showClasses() {
@@ -90,8 +67,22 @@ class JVM {
 		$this->classes[$classname]->initialize();
 	}
 
+	private function registerClass($classname) {
+		$class = $this->instantiate('java/lang/Class');
+		$ref = $this->references->newref();
+		$this->references->set($ref, $class);
+		$class->setReference($ref);
+		$trace = new StackTrace();
+		$trace->push('org/hackyourlife/jvm/JVM', 'load', 0, true);
+		$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
+		$class->info = (object)array(
+			'name' => $classname
+		);
+		$this->classinstances[$classname] = $ref;
+	}
+
 	public function load($classname) {
-		if(is_array($classname)) {
+		if(!is_string($classname)) {
 			throw new Exception();
 		}
 		if(isset($this->classes[$classname]))
@@ -110,17 +101,7 @@ class JVM {
 		$this->classes[$classname] = new JavaClassStatic($this, $classname, $c);
 
 		// register class
-		$class = $this->instantiate('java/lang/Class');
-		$ref = $this->references->newref();
-		$this->references->set($ref, $class);
-		$class->setReference($ref);
-		$trace = new StackTrace();
-		$trace->push('org/hackyourlife/jvm/JVM', 'load', 0, true);
-		$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
-		$class->info = (object)array(
-			'name' => $classname
-		);
-		$this->classinstances[$classname] = $ref;
+		$this->registerClass($classname);
 
 		// initialize class
 		$this->classes[$classname]->initialize();
@@ -154,11 +135,23 @@ class JVM {
 	}
 
 	public function getClass($classname) {
-		$this->load($classname);
+		if(!isset($this->classinstances[$classname])) {
+			if($classname[0] == '[') { // FIXME: array types
+				$this->registerClass($classname);
+			} else {
+				$this->load($classname);
+			}
+		}
 		return $this->classinstances[$classname];
 	}
 
 	public function &getStatic($classname) {
+		if($classname[0] == '[') {
+			if($classname[1] != 'L') {
+				throw new Exception('not implemented');
+			}
+			$classname = substr($classname, 2, strlen($classname) - 3);
+		}
 		$this->load($classname);
 		return $this->classes[$classname];
 	}
@@ -197,6 +190,7 @@ class JVM {
 class References {
 	private $references;
 	private $nextref;
+	private static $debug = false;
 
 	public function __construct() {
 		$this->references = array();
@@ -215,7 +209,9 @@ class References {
 	}
 
 	public function set($ref, $value) {
-		print("[GC] allocating object #$ref ({$value->getName()})\n");
+		if(self::$debug) {
+			print("[GC] allocating object #$ref ({$value->getName()})\n");
+		}
 		if(isset($this->references[$ref])) {
 			//$this->references[$ref]->refcount++;
 			$this->references[$ref]->value = $value;
@@ -241,7 +237,9 @@ class References {
 		}
 		$this->references[$ref]->refcount--;
 		if($this->references[$ref]->refcount == 0) {
-			print("[GC] releasing object #$ref\n");
+			if(self::$debug) {
+				print("[GC] releasing object #$ref\n");
+			}
 			try {
 				$this->references[$ref]->value->finalize();
 			} catch(Exception $e) {

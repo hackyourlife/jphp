@@ -108,6 +108,10 @@ class JavaClassInstance extends JavaObject {
 		}
 	}
 
+	public function showMethods() {
+		$this->staticclass->showMethods();
+	}
+
 	public function findMethodClass($name, $signature) {
 		return $this->staticclass->findMethodClass($name, $signature);
 	}
@@ -116,12 +120,14 @@ class JavaClassInstance extends JavaObject {
 		if($trace == NULL) {
 			throw new Exception();
 		}
-		$method = $this->staticclass->getMethod($name, $signature, $classname);
+		$method_info = $this->staticclass->getMethod($name, $signature, $classname);
+		$method = &$method_info->method;
+		$implemented_in = $method_info->class;
 		$native = $this->staticclass->isNative($method);
 		if($native) {
-			return $this->staticclass->jvm->callNative($this, $name, $signature, $args, $classname, $trace);
+			return $this->staticclass->jvm->callNative($this, $name, $signature, $args, $implemented_in, $trace);
 		}
-		$interpreter = $this->staticclass->getInterpreter($classname);
+		$interpreter = $this->staticclass->getInterpreter($implemented_in);
 		$a = array($this->getReference());
 		if($args !== NULL) {
 			for($i = 0; $i < count($args); $i++) {
@@ -139,8 +145,10 @@ class JavaClassInstance extends JavaObject {
 	}
 
 	public function callSpecial($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
-		//$ref = $this->staticclass->jvm->references->getReference($this);
-		//var_dump($ref);
+		return $this->call($name, $signature, $args, $classname, $trace);
+	}
+
+	public function callInterface($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
 		return $this->call($name, $signature, $args, $classname, $trace);
 	}
 }
@@ -153,7 +161,7 @@ class JavaString extends JavaClassInstance {
 		parent::__construct($jvm->getStatic('java/lang/String'));
 		$this->jvm = $jvm;
 		$this->string = $s;
-		$chars = new JavaArray(strlen($s), JAVA_T_CHAR);
+		$chars = new JavaArray($jvm, strlen($s), JAVA_T_CHAR);
 		for($i = 0; $i < strlen($s); $i++) {
 			$chars->set($i, ord($s[$i]));
 		}

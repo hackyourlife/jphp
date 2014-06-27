@@ -13,18 +13,25 @@ abstract class JavaObject {
 	public function finalize() {
 	}
 	abstract public function getName();
+	abstract public function isInstanceOf($T);
 }
 
 class JavaArray extends JavaObject {
 	public $array;
 	public $length;
 	public $type;
-	public function __construct($length, $type) {
+	private $jvm;
+	public function __construct(&$jvm, $length, $type) {
+		$this->jvm = &$jvm;
 		$this->length = $length;
 		$this->type = $type;
 		$this->array = array();
+		$initial = 0;
+		if(is_string($type)) {
+			$initial = NULL;
+		}
 		for($i = 0; $i < $length; $i++) {
-			$this->array[$i] = 0;
+			$this->array[$i] = $initial;
 		}
 	}
 	public function get($index) {
@@ -61,7 +68,30 @@ class JavaArray extends JavaObject {
 		return $string;
 	}
 	public function getName() {
-		return 'Array';
+		return "Array[{$this->type}]";
+	}
+
+	public function isInstanceOf($T) { // FIXME
+		if($this->type == $T->getName()) {
+			return true;
+		}
+		return false;
+	}
+
+	public function finalize() {
+		if(is_string($this->type)) {
+			foreach($this->array as $entry) {
+				if($entry !== NULL) {
+					$this->jvm->references->free($entry);
+				}
+			}
+		}
+	}
+
+	public function dump() {
+		foreach($this->array as $i => $entry) {
+			print("#$i: $entry\n");
+		}
 	}
 }
 

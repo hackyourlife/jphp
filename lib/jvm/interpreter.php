@@ -11,7 +11,7 @@ class Interpreter {
 	private $exception;
 	private $trace;
 
-	private static $debug = 1;
+	private static $debug = 0;
 
 	public function __construct(&$jvm, $classfile) {
 		$this->jvm = $jvm;
@@ -85,6 +85,10 @@ class Interpreter {
 			}
 		}
 		if($code_attribute_id === false) {
+			$class_name = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
+			$method_name = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
+			$descriptor = $this->classfile->constant_pool[$method['descriptor_index']]['bytes'];
+			print("$class_name.$method_name:$descriptor\n");
 			throw new NoCodeSegmentException();
 		}
 		$code_attribute = $method['attributes'][$code_attribute_id];
@@ -163,7 +167,8 @@ class Interpreter {
 			}
 
 			try {
-				$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->exception, $this->trace, $this->jvm, $class, $method);
+				//$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->exception, $this->trace, $this->jvm, $class, $method);
+				$this->runCode($class, $method);
 				$i++;
 			} catch(Exception $e) {
 				print("[ERROR] exception in $class:$method\n");
@@ -204,7 +209,23 @@ class Interpreter {
 		return $this->pc;
 	}
 
-	public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
+	public static function throwException($name, $args = NULL) {
+		throw new Exception($name);
+	}
+
+	//public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
+	public function runCode($this_class, $this_method) {
+		$code = $this->code;
+		$constants = $this->classfile->constant_pool;
+		$pc = &$this->pc;
+		$stack = &$this->stack;
+		$references = &$this->references;
+		$variables = &$this->variables;
+		$finished = &$this->finished;
+		$result = &$this->result;
+		$exception = &$this->exception;
+		$trace = &$this->trace;
+		$jvm = &$this->jvm;
 		$bytes = 1;
 		switch($code[$pc]) {
 			case 0x32: { // aaload; throws NullPointerException, ArrayIndexOutOfBoundsException
@@ -223,6 +244,7 @@ class Interpreter {
 				$arrayref = $stack->pop();
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
+				$references->persistent($value);
 				break;
 			}
 			case 0x01: { // aconst_null
@@ -264,7 +286,7 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$length = $stack->pop();
 				$type = $constants[$constants[$index]['name_index']]['bytes'];
-				$references->set($arrayref, new JavaArray($length, $type));
+				$references->set($arrayref, new JavaArray($jvm, $length, $type));
 				$stack->push($arrayref);
 				break;
 			}
@@ -367,14 +389,17 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$constant = $constants[$index];
-				print_r($constant);
 				$bytes += 2;
 				$objectref = $stack->pop();
-				if($objectref == NULL) {
-					$stack->push($objectref);
-				} else {
-					throw new Exception('not implemented');
-					// FIXME
+				$stack->push($objectref);
+				if($objectref !== NULL) {
+					$object = $references->get($objectref);
+					$T = $jvm->getStatic($constants[$constants[$index]['name_index']]['bytes']);
+					$result = $object->isInstanceOf($T) ? 1 : 0;
+					print("[CHECKCAST] {$object->getName()} can cast to {$T->getName()} = $result\n");
+					if(!$result) {
+						self::throwException('java/lang/ClassCastException');
+					}
 				}
 				break;
 			}
@@ -1193,8 +1218,30 @@ class Interpreter {
 				$count = $code[$pc + 3];
 				$bytes += 4;
 				// FIXME: correct handling of invokeinterface
+				$method = $constants[$index];
+				$method_info = $constants[$method['name_and_type_index']];
+				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
+				$method_name = $constants[$method_info['name_index']]['bytes'];
+				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
+				print("INTERFACE: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				$descriptor = Interpreter::parseDescriptor($method_descriptor);
+				$argc = count($descriptor->args);
+				$args = array();
+				for($i = 0; $i < $argc; $i++) {
+					$args[] = $stack->pop();
+				}
+				$args = array_reverse($args);
 				$objectref = $stack->pop();
-				throw new Exception('not implemented');
+				if($objectref === NULL) {
+					throw new NullPointerException();
+				}
+				$object = $references->get($objectref);
+				$trace->push($this_class, $this_method, $pc);
+				$value = $object->callInterface($method_name, $method_descriptor, $args, $class_name, $trace);
+				$trace->pop();
+				if($descriptor->returns != 'V') {
+					$stack->push($value);
+				}
 				break;
 			}
 			case 0xb7: { // invokespecial, throws IncompatibleClassChangeError, NullPointerException, IllegalAccessError, AbstractMethodError, UnsatisfiedLinkError
@@ -1743,7 +1790,7 @@ class Interpreter {
 					$counts[] = $stack->pop();
 				}
 				$arrayref = $references->newref();
-				$array = new JavaArray($counts[0]); // FIXME: correct initialization of array
+				$array = new JavaArray($jvm, $counts[0]); // FIXME: correct initialization of array
 				$references->set($arrayref, $array);
 				$stack->push($arrayref);
 				break;
@@ -1768,7 +1815,7 @@ class Interpreter {
 				$bytes++;
 				$count = $stack->pop();
 				$arrayref = $references->newref();
-				$array = new JavaArray($count, $atype);
+				$array = new JavaArray($jvm, $count, $atype);
 				$references->set($arrayref, $array);
 				$stack->push($arrayref);
 				break;
@@ -1791,7 +1838,6 @@ class Interpreter {
 				$indexbyte2 = $code[$pc + 2];
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
-				$type = $constants[$index];
 				$value = $stack->pop();
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
@@ -1802,7 +1848,15 @@ class Interpreter {
 				$field = $constants[$index];
 				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
 				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$field_type = $constants[$constants[$field['name_and_type_index']]['descriptor_index']]['bytes'];
 				$object->setField($field_name, $value);
+				if((($field_type[0] == '[') || ($field_type[0] == 'L')) && ($value !== NULL)) {
+					try {
+						$references->get($value);
+						$references->persistent($value);
+					} catch(NoSuchReferenceException $e) {
+					}
+				}
 				break;
 			}
 			case 0xb3: { // putstatic, throws IncompatibleClassChangeError, IllegalAccessError, Error
@@ -1815,8 +1869,16 @@ class Interpreter {
 				$field = $constants[$index];
 				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
 				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
+				$field_type = $constants[$constants[$field['name_and_type_index']]['descriptor_index']]['bytes'];
 				$class = $jvm->getStatic($class_name);
 				$class->setField($field_name, $value);
+				if((($field_type[0] == '[') || ($field_type[0] == 'L')) && ($value !== NULL)) {
+					try {
+						$references->get($value);
+						$references->persistent($value);
+					} catch(NoSuchReferenceException $e) {
+					}
+				}
 				break;
 			}
 			case 0xa9: { // ret
@@ -1862,7 +1924,6 @@ class Interpreter {
 				break;
 			}
 			case 0xaa: { // tableswitch
-				throw new Exception('tableswitch');
 				$boundary = ((int)($pc / 4)) * 4;
 				$diff = $pc - $boundary;
 				$offset = 3 - $diff; // FIXME: offset
@@ -1881,6 +1942,7 @@ class Interpreter {
 				$highbyte4 = $code[$pc + $offset + 7];
 				$index = $stack->pop();
 				// FIXME: correct implementation of tableswitch
+				throw new Exception('tableswitch');
 				break;
 			}
 			case 0xc4: { // wide

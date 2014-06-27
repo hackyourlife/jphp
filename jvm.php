@@ -16,12 +16,15 @@ require_once('lib/jvm/javaclass.php');
 require_once('lib/jvm/javaclassstatic.php');
 require_once('lib/jvm/opcodes.php');
 require_once('lib/jvm/interpreter.php');
+require_once('lib/jvm/stdio.php');
 require_once('lib/jvm/jvm.php');
 
 echo('creating jvm...');
 $jvm = new JVM();
 $jvm->initialize();
+file_put_contents('state.jvm', serialize($jvm));
 echo(" done\n");
+exit(0);
 
 //$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));
 //echo('result: '); var_dump($result);

@@ -11,9 +11,9 @@ class JavaClassStatic {
 	public $fields;
 	public $jvm;
 
-	public function __construct(&$jvm, $name, $classfile) {
+	public function __construct(&$jvm, $name, &$classfile) {
 		$this->jvm = &$jvm;
-		$this->classfile = $classfile;
+		$this->classfile = &$classfile;
 		$this->nativemethods = array();
 		$this->fields = array();
 		$this->methods = array();
@@ -107,10 +107,25 @@ class JavaClassStatic {
 
 	public function getMethod($name, $signature, $classname = NULL) {
 		if(($classname !== NULL) && ($classname != $this->name)) {
-			return $this->jvm->getStatic($classname)->getMethod($name, $signature);
+			$method_info = $this->jvm->getStatic($classname)->getMethod($name, $signature);
+			$method = &$method_info->method;
+			$implemented_in = $classname;
+			if($method['access_flags'] & JAVA_ACC_ABSTRACT) {
+				$implemented_in = $this->findMethodClass($name, $signature);
+				$method_info = $this->getMethod($name, $signature, $implemented_in);
+				$method = &$method_info->method;
+			}
+			return (object)array(
+				'method' => $method,
+				'class' => $implemented_in
+			);
 		} else {
 			$methodId = $this->getMethodId($name, $signature);
-			return $this->classfile->methods[$methodId];
+			$method = $this->classfile->methods[$methodId];
+			return (object)array(
+				'method' => $method,
+				'class' => $this->getName()
+			);
 		}
 	}
 
@@ -158,12 +173,19 @@ class JavaClassStatic {
 
 	public function dump() {
 		$count = count($this->fields);
-		print("$count local variables\n");
 		foreach($this->fields as $name => $value) {
 			ob_start();
 			var_dump($value->value);
 			$v = trim(ob_get_clean());
 			print("$name: $v\n");
+		}
+	}
+
+	public function showMethods() {
+		foreach($this->methods as $name => $method) {
+			foreach($method as $signature => $id) {
+				print("$name$signature\n");
+			}
 		}
 	}
 
@@ -177,12 +199,14 @@ class JavaClassStatic {
 	}
 
 	public function call($name, $signature, $args = NULL, $trace = NULL) {
-		$method = $this->getMethod($name, $signature);
+		$method_info = $this->getMethod($name, $signature);
+		$method = &$method_info->method;
+		$implemented_in =  $method_info->class;
 		$native = $this->isNative($method);
 		if($native) {
 			return $this->jvm->callNative($this, $name, $signature, $args, $this->getName(), $trace);
 		}
-		$interpreter = new Interpreter($this->jvm, $this->classfile);
+		$interpreter = $this->getInterpreter($implemented_in);
 		$interpreter->setMethod($method, $args);
 		if($trace !== NULL) {
 			$interpreter->setTrace($trace);
