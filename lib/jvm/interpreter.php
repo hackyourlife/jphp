@@ -218,11 +218,15 @@ class Interpreter {
 		return $this->pc;
 	}
 
-	public function throwException($name, $args = NULL) {
+	public function throwException($name, $message = NULL) {
 		//$this->finished = true;
 		//$this->exception = true;
 		$this->trace->push($this->this_class, $this->this_method, $this->pc);
-		throw new Exception($name);
+		$msg = $name;
+		if($message !== NULL) {
+			$msg = "$name: $message";
+		}
+		throw new Exception($msg);
 	}
 
 	//public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
@@ -438,7 +442,7 @@ class Interpreter {
 						print("[CHECKCAST] {$object->getName()} can cast to {$T->getName()} = $result\n");
 					}
 					if(!$result) {
-						self::throwException('java/lang/ClassCastException');
+						self::throwException('java/lang/ClassCastException', "{$object->getName()} cannot cast to {$T->getName()}");
 					}
 				}
 				break;

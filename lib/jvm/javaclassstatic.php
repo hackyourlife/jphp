@@ -129,6 +129,9 @@ class JavaClassStatic {
 			);
 		} else {
 			$classname = $this->findMethodClass($name, $signature);
+			if($classname === NULL) {
+				throw new MethodNotFoundException($name, $signature);
+			}
 			if($classname == $this->name) {
 				$methodId = $this->getMethodId($name, $signature);
 				$method = $this->classfile->methods[$methodId];
@@ -167,6 +170,15 @@ class JavaClassStatic {
 			throw new NoSuchFieldException($name);
 		}
 		return $this->fields[$name]->id;
+	}
+
+	public function getFieldName($id) {
+		if(!isset($this->classfile->fields[$id])) {
+			throw new NoSuchFieldException($id);
+		}
+		$field = $this->classfile->fields[$id];
+		$name = $this->classfile->constant_pool[$field['name_index']]['bytes'];
+		return $name;
 	}
 
 	public function getField($name) {

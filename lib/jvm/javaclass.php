@@ -48,6 +48,14 @@ class JavaClassInstance extends JavaObject {
 		return $this->staticclass->isInstanceOf($name);
 	}
 
+	public function getFieldId($name) {
+		return $this->staticclass->getFieldId($name);
+	}
+
+	public function getFieldName($id) {
+		return $this->staticclass->getFieldName($id);
+	}
+
 	public function getField($name) {
 		if(!isset($this->fields[$name])) {
 			if($this->super !== NULL) {

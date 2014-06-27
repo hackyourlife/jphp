@@ -51,7 +51,6 @@ class JVM {
 		$this->load('java/lang/reflect/Constructor');
 		$this->load('java/lang/reflect/AccessibleObject');
 		$this->load('java/lang/Class$Atomic');
-		return;
 
 		$trace = new StackTrace();
 		$trace->push('org/hackyourlife/jvm/JVM', 'initialize', 0, true);
@@ -158,7 +157,8 @@ class JVM {
 
 	private function registerClass($classname, $delayed_load = false) {
 		if(isset($this->classinstances[$classname])) {
-			$this->classinstances[$classname]->info->loaded = !$delayed_load;
+			$class = $this->references->get($this->classinstances[$classname]);
+			$class->info->loaded = !$delayed_load;
 			return;
 		}
 		$class = $this->instantiate('java/lang/Class');

@@ -29,14 +29,22 @@ $peak = memory_get_peak_usage();
 $peak_mb = (int) ($peak / (1024 * 1024));
 print("peak usage: $peak_mb MiB\n");
 
-exit(0);
-
 //$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));
 //echo('result: '); var_dump($result);
 
-echo('creating instance of "constructor"...');
-$class = $jvm->instantiate('constructor');
-echo(" done\n");
-$class->call('main', '([Ljava/lang/String;)V');
-$class->delete();
-echo(" done\n");
+echo("running helloworld\n");
+
+$arg0 = JavaString::newString($jvm, "PHP Java VM");
+$args = new JavaArray($jvm, 1, 'java/lang/String');
+$args->set(0, $arg0);
+$argsref = $jvm->references->newref();
+$jvm->references->set($argsref, $args);
+$args->setReference($argsref);
+
+$trace = new StackTrace();
+$helloworld = $jvm->getStatic('helloworld');
+$helloworld->call('main', '([Ljava/lang/String;)V', array($argsref), $trace);
+
+$peak = memory_get_peak_usage();
+$peak_mb = (int) ($peak / (1024 * 1024));
+print("peak usage: $peak_mb MiB\n");
