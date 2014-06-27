@@ -19,10 +19,24 @@ function Java_sun_misc_Unsafe_addressSize(&$jvm, &$class, $args, $trace) {
 }
 
 function Java_sun_misc_Unsafe_compareAndSwapObject(&$jvm, &$class, $args, $trace) {
-	print("class: {$class->getName()}\n");
 	$objectref = $args[0];
 	$object = $jvm->references->get($objectref);
-	print("object: {$object->getName()}\n");
+	$fieldid = $args[1];
+	$from = $args[2];
+	$to = $args[3];
+	$fieldname = $object->getFieldName($fieldid);
+	$value = $object->getField($fieldname);
+	if($value === $from) {
+		$object->setField($fieldname, $to);
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+function Java_sun_misc_Unsafe_compareAndSwapInt(&$jvm, &$class, $args, $trace) {
+	$objectref = $args[0];
+	$object = $jvm->references->get($objectref);
 	$fieldid = $args[1];
 	$from = $args[2];
 	$to = $args[3];
@@ -45,4 +59,13 @@ function Java_sun_misc_Unsafe_objectFieldOffset(&$jvm, &$class, $args, $trace) {
 	$fieldname = $jvm->references->get($fieldnameref->getField('value'))->string();
 	$fieldid = $jvm->getStatic($clazz->info->name)->getFieldId($fieldname);
 	return $fieldid;
+}
+
+function Java_sun_misc_Unsafe_getIntVolatile(&$jvm, &$class, $args, $trace) {
+	$objectref = $args[0];
+	$object = $jvm->references->get($objectref);
+	$fieldid = $args[1];
+	$fieldname = $object->getFieldName($fieldid);
+	$value = $object->getField($fieldname);
+	return $value;
 }

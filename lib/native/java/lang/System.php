@@ -27,20 +27,15 @@ function Java_java_lang_System_initProperties(&$jvm, &$class, $args, $trace) {
 		'file.separator' => DIRECTORY_SEPARATOR,
 		'path.separator' => PATH_SEPARATOR,
 		'line.separator' => PHP_EOL,
+		'file.encoding' => 'UTF-8'
 	);
-	$properties_ref = $class->getField('props');
+	$properties_ref = $args[0];
 	$properties = $jvm->references->get($properties_ref);
 	$trace->push('java/lang/System', 'initProperties', 0, true);
 	foreach($props as $key => $value) {
-		$string_key = new JavaString($jvm, $key);
-		$string_key->setReference($jvm->references->newref());
-		$jvm->references->set($string_key->getReference(), $string_key);
-		$string_key->initialize();
-		$string_value = new JavaString($jvm, $value);
-		$string_value->setReference($jvm->references->newref());
-		$jvm->references->set($string_value->getReference(), $string_value);
-		$string_value->initialize();
-		$properties->call('setProperty', '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;', array($string_key->getReference(), $string_value->getReference()), NULL, $trace);
+		$string_key = JavaString::newString($jvm, $key);
+		$string_value = JavaString::newString($jvm, $value);
+		$properties->call('setProperty', '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;', array($string_key, $string_value), NULL, $trace);
 	}
 	$trace->pop();
 }
@@ -49,7 +44,7 @@ function Java_java_lang_System_currentTimeMillis(&$jvm, &$class, $args, $trace) 
 	return microtime() / 1000;
 }
 
-function Java_java_lang_System_arraycopy(&$jvm, &$class, $args) {
+function Java_java_lang_System_arraycopy(&$jvm, &$class, $args, $trace) {
 	if(($args[0] === NULL) || ($args[2] === NULL)) {
 		throw new NullPointerException();
 	}
@@ -61,4 +56,9 @@ function Java_java_lang_System_arraycopy(&$jvm, &$class, $args) {
 
 	$tmp = array_slice($src->array, $srcPos, $length);
 	array_splice($dst->array, $dstPos, $length, $tmp);
+}
+
+function Java_java_lang_System_setIn0(&$jvm, &$class, $args, $trace) {
+	$stdin = $args[0];
+	$class->setField('in', $stdin);
 }

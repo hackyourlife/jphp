@@ -104,6 +104,25 @@ class JavaArray extends JavaObject {
 			print("#$i: $entry\n");
 		}
 	}
+
+	public function call($name, $signature, $args, $classname, $trace) {
+		// cloneable
+		if($name !== 'clone') {
+			throw new Exception();
+		}
+		if($signature !== '()Ljava/lang/Object;') {
+			throw new Exception($signature);
+		}
+
+		$array = new JavaArray($this->jvm, $this->length, $this->type);
+		for($i = 0; $i < $this->length; $i++) {
+			$array->set($i, $this->array[$i]);
+		}
+		$arrayref = $this->jvm->references->newref();
+		$this->jvm->references->set($arrayref, $array);
+		$array->setReference($arrayref);
+		return $arrayref;
+	}
 }
 
 class StackTraceElement {

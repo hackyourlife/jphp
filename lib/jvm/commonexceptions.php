@@ -44,6 +44,12 @@ class NoSuchReferenceException extends Exception {
 	}
 }
 
+class JavaException extends Exception {
+	public function __construct($reference) {
+		parent::__construct($reference);
+	}
+}
+
 function printException($e) {
 	print("[ERROR] {$e->getFile()}:{$e->getLine()}: {$e->getMessage()}\n");
 	print($e->getTraceAsString());

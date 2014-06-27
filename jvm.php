@@ -19,6 +19,8 @@ require_once('lib/jvm/interpreter.php');
 require_once('lib/jvm/stdio.php');
 require_once('lib/jvm/jvm.php');
 
+set_time_limit(60);
+
 echo('creating jvm...');
 $jvm = new JVM();
 $jvm->initialize();

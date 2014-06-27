@@ -36,7 +36,7 @@ function Java_java_lang_Class_getPrimitiveClass(&$jvm, &$class, $args, $trace) {
 function Java_java_lang_Class_getDeclaredFields0(&$jvm, &$class, $args, $trace) {
 	$publiconly = $args[0];
 	$declared_fields = $jvm->getStatic($class->info->name)->getDeclaredFields($publiconly);
-	$fields = new JavaArray($jvm, count($declared_fields), $class->info->name);
+	$fields = new JavaArray($jvm, count($declared_fields), 'java/lang/reflect/Field');
 	$fieldsref = $jvm->references->newref();
 	$jvm->references->set($fieldsref, $fields);
 	$fields->setReference($fieldsref);
@@ -70,9 +70,109 @@ function Java_java_lang_Class_getDeclaredFields0(&$jvm, &$class, $args, $trace) 
 		$fieldref = $jvm->references->newref();
 		$jvm->references->set($fieldref, $field);
 		$field->setReference($fieldref);
-		$field->call('<init>', '(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;IILjava/lang/String;[B)V', $args, NULL, $trace);
+		$field->callSpecial('<init>', '(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;IILjava/lang/String;[B)V', $args, NULL, $trace);
 		$fields->set($i, $fieldref);
 	}
 	$trace->pop();
 	return $fieldsref;
+}
+
+function Java_java_lang_Class_getDeclaredConstructors0(&$jvm, &$class, $args, $trace) {
+	$publiconly = $args[0];
+	$declared_constructors = $jvm->getStatic($class->info->name)->getDeclaredConstructors($publiconly);
+	$constructors = new JavaArray($jvm, count($declared_constructors), 'java/lang/reflect/Constructor');
+	$constructorsref = $jvm->references->newref();
+	$jvm->references->set($constructorsref, $constructors);
+	$constructors->setReference($constructorsref);
+	$trace->push('java/lang/Class', 'getDeclaredConstructors0', true);
+	for($i = 0; $i < count($declared_constructors); $i++) {
+		$declared_constructor = $declared_constructors[$i];
+		$signature = $declared_constructor->signature;
+		$parameters = Interpreter::parseDescriptor($signature);
+
+		$signatureref = JavaString::newString($jvm, $signature);
+
+		$types = new JavaArray($jvm, count($parameters->args), 'java/lang/Class');
+		$typesref = $jvm->references->newref();
+		$jvm->references->set($typesref, $types);
+		$types->setReference($typesref);
+
+		$exceptions = new JavaArray($jvm, 0, 'java/lang/Class');
+		$exceptionsref = $jvm->references->newref();
+		$jvm->references->set($exceptionsref, $exceptions);
+		$exceptions->setReference($exceptionsref);
+
+		$args = array(
+			$jvm->getClass($class->info->name),
+			$typesref,
+			$exceptionsref,
+			$declared_constructor->modifiers,
+			0,
+			$signatureref,
+			NULL,
+			NULL
+		);
+
+		$constructor = $jvm->instantiate('java/lang/reflect/Constructor');
+		$constructorref = $jvm->references->newref();
+		$jvm->references->set($constructorref, $constructor);
+		$constructor->setReference($constructorref);
+		$constructor->callSpecial('<init>', '(Ljava/lang/Class;[Ljava/lang/Class;[Ljava/lang/Class;IILjava/lang/String;[B[B)V', $args, NULL, $trace);
+		$constructors->set($i, $constructorref);
+	}
+	$trace->pop();
+	return $constructorsref;
+}
+
+function Java_java_lang_Class_forName0(&$jvm, &$class, $args, $trace) {
+	$nameref = $args[0];
+	$initialize = $args[1];
+	$classloader = $args[2];
+
+	$namechars = $jvm->references->get($nameref)->getField('value');
+	$classname = $jvm->references->get($namechars)->string();
+
+	$classname = str_replace('.', '/', $classname);
+
+	try {
+		if($initialize) {
+			$jvm->load($classname);
+			return $jvm->getClass($classname);
+		} else {
+			return $jvm->getClass($classname);
+		}
+	} catch(ClassNotFoundException $e) {
+		$exception = $jvm->instantiate('java/lang/NoClassDefFoundError');
+		$exceptionref = $jvm->references->newref();
+		$jvm->references->set($exceptionref, $exception);
+		$exception->setReference($exceptionref);
+		$message = JavaString::newString($jvm, $classname);
+		$exception->callSpecial('<init>', '(Ljava/lang/String;)V', array($message), NULL, $trace);
+		throw new JavaException($exceptionref);
+	}
+}
+
+function Java_java_lang_Class_getSuperclass(&$jvm, &$class, $args, $trace) {
+	$classname = $class->info->name;
+	$clazz = $jvm->getStatic($classname);
+	$super = $clazz->super;
+	if($super === NULL) {
+		return $super;
+	} else {
+		$name = $super->getName();
+		return $jvm->getClass($name);
+	}
+}
+
+function Java_java_lang_Class_getModifiers(&$jvm, &$class, $args, $trace) {
+	$classname = $class->info->name;
+	$clazz = $jvm->getStatic($classname);
+	return $clazz->getModifiers();
+}
+
+function Java_java_lang_Class_isInterface(&$jvm, &$class, $args, $trace) {
+	$classname = $class->info->name;
+	$clazz = $jvm->getStatic($classname);
+	$interface = $clazz->isInterface();
+	return $interface ? 1 : 0;
 }

@@ -68,7 +68,7 @@ class JavaClassStatic {
 		return ($this->access_flags & JAVA_ACC_ABSTRACT) ? true : false;
 	}
 
-	public function getAccessFlags() {
+	public function getModifiers() {
 		return $this->access_flags;
 	}
 
@@ -183,14 +183,23 @@ class JavaClassStatic {
 
 	public function getField($name) {
 		if(!isset($this->fields[$name])) {
-			throw new NoSuchFieldException($name);
+			if($this->super !== NULL) {
+				return $this->super->getField($name);
+			} else {
+				throw new NoSuchFieldException($name);
+			}
 		}
 		return $this->fields[$name]->value;
 	}
 
 	public function setField($name, $value) {
 		if(!isset($this->fields[$name])) {
-			throw new NoSuchFieldException($name);
+			if($this->super !== NULL) {
+				$this->super->setField($name, $value);
+				return;
+			} else {
+				throw new NoSuchFieldException($name);
+			}
 		}
 		$type = $this->fields[$name]->descriptor[0];
 		if(($type == JAVA_FIELDTYPE_ARRAY) || ($type == JAVA_FIELDTYPE_CLASS)) {
@@ -240,6 +249,26 @@ class JavaClassStatic {
 			);
 		}
 		return $fields;
+	}
+
+	public function getDeclaredConstructors($publiconly = false) {
+		$constructors = array();
+		foreach($this->classfile->methods as $id => $constructor) {
+			$name = $this->classfile->constant_pool[$constructor['name_index']]['bytes'];
+			if($name !== '<init>') {
+				continue;
+			}
+			if($publiconly && !($constructor['access_flags'] & JAVA_ACC_PUBLIC)) {
+				continue;
+			}
+			$signature = $this->classfile->constant_pool[$constructor['descriptor_index']]['bytes'];
+			$constructors[] = (object)array(
+				'name' => $name,
+				'modifiers' => $constructor['access_flags'],
+				'signature' => $signature
+			);
+		}
+		return $constructors;
 	}
 
 	public function getInterpreter($classname = NULL) {

@@ -174,7 +174,7 @@ class JavaString extends JavaClassInstance {
 
 	public function __construct(&$jvm, $s) {
 		parent::__construct($jvm->getStatic('java/lang/String'));
-		$this->jvm = $jvm;
+		$this->jvm = &$jvm;
 		$this->string = $s;
 		$chars = new JavaArray($jvm, strlen($s), JAVA_T_CHAR);
 		for($i = 0; $i < strlen($s); $i++) {

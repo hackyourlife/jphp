@@ -15,9 +15,9 @@ class Interpreter {
 	private static $debug_cast = false;
 	private static $debug_invoke = false;
 
-	public function __construct(&$jvm, $classfile) {
-		$this->jvm = $jvm;
-		$this->classfile = $classfile;
+	public function __construct(&$jvm, &$classfile) {
+		$this->jvm = &$jvm;
+		$this->classfile = &$classfile;
 		$this->stack = new ArgumentStack();
 		$this->references = new InterpreterReferences($jvm->references);
 		$this->variables = array();
@@ -174,6 +174,20 @@ class Interpreter {
 				//$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->exception, $this->trace, $this->jvm, $class, $method);
 				$this->runCode();
 				$i++;
+			} catch(JavaException $e) {
+				$exception = $this->references->get($e->getMessage());
+				$trace = new StackTrace();
+				$class = $exception->findMethodClass('getMessage', '()Ljava/lang/String;');
+				$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
+				if($messageref !== NULL) {
+					$message = $this->references->get($messageref);
+					$chars = $this->references->get($message->getField('value'));
+					print("[ERROR] uncaught {$exception->getName()}: {$chars->string()}\n");
+				} else {
+					print("[ERROR] uncaught {$exception->getName()}\n");
+				}
+				$exception->trace->show();
+				exit(0);
 			} catch(Exception $e) {
 				print("[ERROR] exception in $class:$method\n");
 				$this->trace->show();
@@ -219,14 +233,27 @@ class Interpreter {
 	}
 
 	public function throwException($name, $message = NULL) {
-		//$this->finished = true;
-		//$this->exception = true;
-		$this->trace->push($this->this_class, $this->this_method, $this->pc);
-		$msg = $name;
+		$this->finished = true;
+		$this->exception = true;
+		//$this->trace->push($this->this_class, $this->this_method, $this->pc);
+		//$msg = $name;
+		//if($message !== NULL) {
+		//	$msg = "$name: $message";
+		//}
+		//throw new Exception($msg);
+
+		$exception = $this->jvm->instantiate($name);
+		$exceptionref = $this->jvm->references->newref();
+		$this->jvm->references->set($exceptionref, $exception);
+		$exception->setReference($exceptionref);
 		if($message !== NULL) {
-			$msg = "$name: $message";
+			$string = JavaString::newString($this->jvm, $message);
+			$exception->callSpecial('<init>', '(Ljava/lang/String;)V', array($string), NULL, $this->trace);
+		} else {
+			$exception->callSpecial('<init>', '()V', NULL, NULL, $this->trace);
 		}
-		throw new Exception($msg);
+		throw new JavaException($exceptionref);
+
 	}
 
 	//public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
@@ -855,7 +882,13 @@ class Interpreter {
 				$field = $constants[$index];
 				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
 				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
-				$value = $object->getField($field_name);
+				try {
+					$value = $object->getField($field_name);
+				} catch(NoSuchFieldException $e) {
+					$trace->push($this_class, $this_method, $pc);
+					$object->dump();
+					$this->throwException('java/lang/NoSuchFieldError', "$class_name:$field_name");
+				}
 				$stack->push($value);
 				break;
 			}
@@ -868,7 +901,13 @@ class Interpreter {
 				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
 				$field_name = $constants[$constants[$field['name_and_type_index']]['name_index']]['bytes'];
 				$class = $jvm->getStatic($class_name);
-				$value = $class->getField($field_name);
+				try {
+					$value = $class->getField($field_name);
+				} catch(NoSuchFieldException $e) {
+					$class->dump();
+					$trace->push($this_class, $this_method, $pc);
+					$this->throwException('java/lang/NoSuchFieldError', "$class_name:$field_name");
+				}
 				$stack->push($value);
 				break;
 			}
@@ -1600,10 +1639,6 @@ class Interpreter {
 					throw new Exception('not implemented: interface');
 				case JAVA_CONSTANT_STRING:
 					$string = $constants[$constant['string_index']]['bytes'];
-					//$instance = new JavaString($jvm, $string);
-					//$references->set($instance->getReference(), $instance);
-					//$instance->initialize();
-					//$value = $instance->getReference();
 					$value = JavaString::newString($jvm, $string);
 					break;
 				case JAVA_CONSTANT_INTEGER:
@@ -1644,7 +1679,8 @@ class Interpreter {
 				case JAVA_CONSTANT_INTERFACEMETHODREF:
 					throw new Exception('not implemented');
 				case JAVA_CONSTANT_STRING:
-					$value = $constants[$constant['string_index']]['bytes'];
+					$string = $constants[$constant['string_index']]['bytes'];
+					$value = JavaString::newString($jvm, $string);
 					break;
 				case JAVA_CONSTANT_INTEGER:
 					$value = s32($constant['bytes']);
