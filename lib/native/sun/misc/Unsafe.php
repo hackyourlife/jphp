@@ -26,3 +26,14 @@ function Java_sun_misc_Unsafe_compareAndSwapObject(&$jvm, &$class, $args, $trace
 	print_r($args);
 	throw new Exception();
 }
+
+function Java_sun_misc_Unsafe_objectFieldOffset(&$jvm, &$class, $args, $trace) {
+	$fieldref = $args[0];
+	$field = $jvm->references->get($fieldref);
+	$clazzref = $field->getField('clazz');
+	$clazz = $jvm->references->get($clazzref);
+	$fieldnameref = $jvm->references->get($field->getField('name'));
+	$fieldname = $jvm->references->get($fieldnameref->getField('value'))->string();
+	$fieldid = $jvm->getStatic($clazz->info->name)->getFieldId($fieldname);
+	return $fieldid;
+}

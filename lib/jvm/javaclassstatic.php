@@ -20,10 +20,11 @@ class JavaClassStatic {
 		$this->interfaces = array();
 		$this->name = $name;
 		$this->access_flags = $classfile->access_flags;
-		foreach($classfile->fields as $field) {
+		foreach($classfile->fields as $id => $field) {
 			$name = $classfile->constant_pool[$field['name_index']]['bytes'];
 			$descriptor = $classfile->constant_pool[$field['descriptor_index']]['bytes'];
 			$this->fields[$name] = (object)array(
+				'id' => $id,
 				'name' => $name,
 				'descriptor' => $descriptor,
 				'access_flags' => $field['access_flags'],
@@ -159,6 +160,13 @@ class JavaClassStatic {
 
 	public function isNative($method) {
 		return $method['access_flags'] & JAVA_ACC_NATIVE ? true : false;
+	}
+
+	public function getFieldId($name) {
+		if(!isset($this->fields[$name])) {
+			throw new NoSuchFieldException($name);
+		}
+		return $this->fields[$name]->id;
 	}
 
 	public function getField($name) {

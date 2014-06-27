@@ -162,6 +162,8 @@ class JavaString extends JavaClassInstance {
 	private $jvm;
 	private $string;
 	private $dataref;
+	public static $strings = array();
+
 	public function __construct(&$jvm, $s) {
 		parent::__construct($jvm->getStatic('java/lang/String'));
 		$this->jvm = $jvm;
@@ -188,5 +190,30 @@ class JavaString extends JavaClassInstance {
 
 	public function getString() {
 		return $this->string;
+	}
+
+	public static function intern(&$jvm, $objectref) {
+		$string = $jvm->references->get($objectref);
+		$valueref = $string->getField('value');
+		$value = $jvm->references->get($valueref)->string();
+		if(isset(static::$strings[$value])) {
+			return static::$strings[$value];
+		} else {
+			static::$strings[$value] = $objectref;
+			$jvm->references->useref($objectref); // make permanent
+			return $objectref;
+		}
+	}
+
+	public static function newString(&$jvm, $value) {
+		if(isset(static::$strings[$value])) {
+			return static::$strings[$value];
+		} else {
+			$string = new JavaString($jvm, $value);
+			$jvm->references->set($string->getReference(), $string);
+			$string->initialize();
+			static::$strings[$value] = $string->getReference();
+			return $string->getReference();
+		}
 	}
 }

@@ -41,14 +41,11 @@ function Java_java_lang_Class_getDeclaredFields0(&$jvm, &$class, $args, $trace) 
 	$jvm->references->set($fieldsref, $fields);
 	$fields->setReference($fieldsref);
 	$trace->push('java/lang/Class', 'getDeclaredFields0', true);
-	foreach($declared_fields as $declared_field) {
-		$fieldname = new JavaString($jvm, $declared_field->name);
-		$jvm->references->set($fieldname->getReference(), $fieldname);
-		$fieldname->initialize();
+	for($i = 0; $i < count($declared_fields); $i++) {
+		$declared_field = $declared_fields[$i];
+		$fieldname = JavaString::newString($jvm, $declared_field->name);
 
-		$signature = new JavaString($jvm, $declared_field->signature);
-		$jvm->references->set($signature->getReference(), $signature);
-		$signature->initialize();
+		$signature = JavaString::newString($jvm, $declared_field->signature);
 
 		$type = NULL;
 		if($declared_field->signature[0] == 'L') {
@@ -61,11 +58,11 @@ function Java_java_lang_Class_getDeclaredFields0(&$jvm, &$class, $args, $trace) 
 		}
 		$args = array(
 			$jvm->getClass($class->info->name),
-			$fieldname->getReference(),
+			$fieldname,
 			$type,
 			$declared_field->modifiers,
-			7,
-			$signature->getReference(),
+			0,
+			$signature,
 			NULL
 		);
 
@@ -74,6 +71,7 @@ function Java_java_lang_Class_getDeclaredFields0(&$jvm, &$class, $args, $trace) 
 		$jvm->references->set($fieldref, $field);
 		$field->setReference($fieldref);
 		$field->call('<init>', '(Ljava/lang/Class;Ljava/lang/String;Ljava/lang/Class;IILjava/lang/String;[B)V', $args, NULL, $trace);
+		$fields->set($i, $fieldref);
 	}
 	$trace->pop();
 	return $fieldsref;

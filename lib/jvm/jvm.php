@@ -13,7 +13,7 @@ class JVM {
 	private $current_thread;
 	private $system_threadgroup;
 
-	private static $debug_loading = true;
+	private static $debug_loading = false;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');

@@ -120,6 +120,8 @@ class Interpreter {
 				$n++;
 			}
 		}
+		$this->this_class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
+		$this->this_method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
 	}
 
 	public function setTrace($trace) {
@@ -141,9 +143,9 @@ class Interpreter {
 	public function execute($steps = 0) {
 		global $MNEMONICS;
 		$code_length = $this->code_length;
+		$class = $this->this_class;
+		$method = $this->this_method;
 		$i = 0;
-		$class = $this->classfile->constant_pool[$this->classfile->constant_pool[$this->classfile->this_class]['name_index']]['bytes'];
-		$method = $this->classfile->constant_pool[$this->method['name_index']]['bytes'];
 		while(true) {
 			if($steps != 0 && $i > $steps) {
 				print("interrupting execution\n");
@@ -170,7 +172,7 @@ class Interpreter {
 
 			try {
 				//$this->runCode($this->code, $this->classfile->constant_pool, $this->pc, $this->stack, $this->references, $this->variables, $this->finished, $this->result, $this->exception, $this->trace, $this->jvm, $class, $method);
-				$this->runCode($class, $method);
+				$this->runCode();
 				$i++;
 			} catch(Exception $e) {
 				print("[ERROR] exception in $class:$method\n");
@@ -201,7 +203,8 @@ class Interpreter {
 					$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
 					if($messageref !== NULL) {
 						$message = $this->references->get($messageref);
-						print("[ERROR] uncaught {$exception->getName()}: {$message->getString()}\n");
+						$chars = $this->references->get($message->getField('value'));
+						print("[ERROR] uncaught {$exception->getName()}: {$chars->string()}\n");
 					} else {
 						print("[ERROR] uncaught {$exception->getName()}\n");
 					}
@@ -215,14 +218,15 @@ class Interpreter {
 		return $this->pc;
 	}
 
-	public static function throwException($name, $args = NULL) {
+	public function throwException($name, $args = NULL) {
 		//$this->finished = true;
 		//$this->exception = true;
+		$this->trace->push($this->this_class, $this->this_method, $this->pc);
 		throw new Exception($name);
 	}
 
 	//public static function runCode($code, $constants, &$pc, &$stack, &$references, &$variables, &$finished, &$result, &$exception, &$trace, &$jvm, $this_class, $this_method) {
-	public function runCode($this_class, $this_method) {
+	public function runCode() {
 		$code = $this->code;
 		$constants = $this->classfile->constant_pool;
 		$pc = &$this->pc;
@@ -234,6 +238,8 @@ class Interpreter {
 		$exception = &$this->exception;
 		$trace = &$this->trace;
 		$jvm = &$this->jvm;
+		$this_class = &$this->this_class;
+		$this_method = &$this->this_method;
 		$bytes = 1;
 		switch($code[$pc]) {
 			case 0x32: { // aaload; throws NullPointerException, ArrayIndexOutOfBoundsException
@@ -1590,10 +1596,11 @@ class Interpreter {
 					throw new Exception('not implemented: interface');
 				case JAVA_CONSTANT_STRING:
 					$string = $constants[$constant['string_index']]['bytes'];
-					$instance = new JavaString($jvm, $string);
-					$references->set($instance->getReference(), $instance);
-					$instance->initialize();
-					$value = $instance->getReference();
+					//$instance = new JavaString($jvm, $string);
+					//$references->set($instance->getReference(), $instance);
+					//$instance->initialize();
+					//$value = $instance->getReference();
+					$value = JavaString::newString($jvm, $string);
 					break;
 				case JAVA_CONSTANT_INTEGER:
 					$value = s32($constant['bytes']);
