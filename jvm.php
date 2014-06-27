@@ -24,6 +24,11 @@ $jvm = new JVM();
 $jvm->initialize();
 file_put_contents('state.jvm', serialize($jvm));
 echo(" done\n");
+
+$peak = memory_get_peak_usage();
+$peak_mb = (int) ($peak / (1024 * 1024));
+print("peak usage: $peak_mb MiB\n");
+
 exit(0);
 
 //$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));

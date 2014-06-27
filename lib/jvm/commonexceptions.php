@@ -36,7 +36,11 @@ class NoSuchFieldException extends Exception {
 
 class NoSuchReferenceException extends Exception {
 	public function __construct($name) {
-		parent::__construct("Reference not found: $name");
+		if(is_string($name)) {
+			parent::__construct("Reference not found: $name");
+		} else {
+			parent::__construct("Reference not found");
+		}
 	}
 }
 

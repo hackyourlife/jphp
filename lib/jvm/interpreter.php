@@ -12,6 +12,8 @@ class Interpreter {
 	private $trace;
 
 	private static $debug = 0;
+	private static $debug_cast = false;
+	private static $debug_invoke = false;
 
 	public function __construct(&$jvm, $classfile) {
 		$this->jvm = $jvm;
@@ -197,9 +199,13 @@ class Interpreter {
 					$trace = new StackTrace();
 					$class = $exception->findMethodClass('getMessage', '()Ljava/lang/String;');
 					$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
-					$message = $this->references->get($messageref);
-					print("[ERROR] uncaught {$exception->getName()}: {$message->getString()}\n");
-					$this->trace->show();
+					if($messageref !== NULL) {
+						$message = $this->references->get($messageref);
+						print("[ERROR] uncaught {$exception->getName()}: {$message->getString()}\n");
+					} else {
+						print("[ERROR] uncaught {$exception->getName()}\n");
+					}
+					$exception->trace->show();
 					exit(0);
 					//throw new Exception();
 				}
@@ -210,6 +216,8 @@ class Interpreter {
 	}
 
 	public static function throwException($name, $args = NULL) {
+		//$this->finished = true;
+		//$this->exception = true;
 		throw new Exception($name);
 	}
 
@@ -231,9 +239,11 @@ class Interpreter {
 			case 0x32: { // aaload; throws NullPointerException, ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
-				if($array === NULL)
-					throw new Exception('NullPointerException');
 				$value = $array->get($index);
 				$stack->push($value);
 				break;
@@ -242,6 +252,10 @@ class Interpreter {
 				$value = $stack->pop();
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
 				$references->persistent($value);
@@ -299,7 +313,8 @@ class Interpreter {
 			case 0xbe: { // arraylength, throws NullPointerException
 				$arrayref = $stack->pop();
 				if($arrayref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$array = $references->get($arrayref);
 				if($array instanceof JavaClassInstance) {
@@ -339,7 +354,8 @@ class Interpreter {
 			case 0xbf: { // athrow, throws NullPointerException, IllegalMonitorStateException
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$result = $objectref;
 				$finished = true;
@@ -349,15 +365,23 @@ class Interpreter {
 			case 0x33: { // baload, throws NullPointerException, ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$value = $array->get($index);
-				$stack->push($value & 0xFF); // FIXME: SIGN
+				$stack->push(s8($value));
 				break;
 			}
 			case 0x54: { // bastore, throws NullPointerException, ArrayIndexOutOfBoundsException
 				$value = $stack->pop();
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
 				break;
@@ -365,12 +389,16 @@ class Interpreter {
 			case 0x10: { // bipush
 				$byte = $code[$pc + 1];
 				$bytes++;
-				$stack->push($byte); // FIXME: SIGN
+				$stack->push(s8($byte));
 				break;
 			}
 			case 0x34: { // caload, throws NullPointerException, ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$value = $array->get($index);
 				$stack->push($value);
@@ -380,6 +408,10 @@ class Interpreter {
 				$value = $stack->pop();
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
 				break;
@@ -396,7 +428,9 @@ class Interpreter {
 					$object = $references->get($objectref);
 					$T = $jvm->getStatic($constants[$constants[$index]['name_index']]['bytes']);
 					$result = $object->isInstanceOf($T) ? 1 : 0;
-					print("[CHECKCAST] {$object->getName()} can cast to {$T->getName()} = $result\n");
+					if(self::$debug_cast) {
+						print("[CHECKCAST] {$object->getName()} can cast to {$T->getName()} = $result\n");
+					}
 					if(!$result) {
 						self::throwException('java/lang/ClassCastException');
 					}
@@ -440,6 +474,10 @@ class Interpreter {
 				$value = $stack->pop();
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
 				break;
@@ -653,6 +691,10 @@ class Interpreter {
 			case 0x30: { // faload, throws NullPointerException, ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$value = $array->get($index);
 				$stack->push($value);
@@ -662,6 +704,10 @@ class Interpreter {
 				$value = $stack->pop();
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
 				break;
@@ -791,6 +837,10 @@ class Interpreter {
 				$index = ($indexbyte1 << 8) | $indexbyte2;
 				$bytes += 2;
 				$objectref = $stack->pop();
+				if($objectref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$object = $references->get($objectref);
 				$field = $constants[$index];
 				$class_name = $constants[$constants[$field['class_index']]['name_index']]['bytes'];
@@ -820,7 +870,7 @@ class Interpreter {
 				$pc += $branch;
 				break;
 			}
-			case 0xc8: { // goto_
+			case 0xc8: { // goto_w
 				$branchbyte1 = $code[$pc + 1];
 				$branchbyte2 = $code[$pc + 2];
 				$branchbyte3 = $code[$pc + 2];
@@ -832,7 +882,7 @@ class Interpreter {
 			}
 			case 0x91: { // i2b
 				$value = $stack->pop();
-				$result = $value & 0xFF; // FIXME: sign
+				$result = s8($value); // FIXME: sign
 				$stack->push($result);
 				break;
 			}
@@ -862,7 +912,7 @@ class Interpreter {
 			}
 			case 0x93: { // i2s
 				$value = $stack->pop();
-				$result = $value & 0xFFFF; // FIXME: sign
+				$result = s16($value & 0xFFFF);
 				$stack->push($result);
 				break;
 			}
@@ -876,6 +926,10 @@ class Interpreter {
 			case 0x2e: { // iaload, throws NullPointerException, ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$value = $array->get($index);
 				$stack->push($value);
@@ -1029,14 +1083,14 @@ class Interpreter {
 				}
 				break;
 			}
-			case 0xa4: { // if_icmplt
+			case 0xa4: { // if_icmple
 				$branchbyte1 = $code[$pc + 1];
 				$branchbyte2 = $code[$pc + 2];
 				$branch = s16(($branchbyte1 << 8) | $branchbyte2);
 				$bytes += 2;
 				$value2 = $stack->pop();
 				$value1 = $stack->pop();
-				if($value1 < $value2) {
+				if($value1 <= $value2) {
 					$pc += $branch;
 					$bytes = 0;
 				}
@@ -1142,7 +1196,7 @@ class Interpreter {
 				$index = $code[$pc + 1];
 				$const = $code[$pc + 2];
 				$bytes += 2;
-				$variables[$index] += $const; // FIXME: sign
+				$variables[$index] += s8($const);
 				break;
 			}
 			case 0x15: { // iload
@@ -1197,7 +1251,9 @@ class Interpreter {
 					$object = $references->get($objectref);
 					$T = $jvm->getStatic($constants[$constants[$index]['name_index']]['bytes']);
 					$result = $object->isInstanceOf($T) ? 1 : 0;
-					print("[INSTANCEOF] {$object->getName()} instanceof {$T->getName()} = $result\n");
+					if(self::$debug_cast) {
+						print("[INSTANCEOF] {$object->getName()} instanceof {$T->getName()} = $result\n");
+					}
 				}
 				$stack->push($result);
 				break;
@@ -1223,7 +1279,9 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				print("INTERFACE: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				if(self::$debug_invoke) {
+					print("INTERFACE: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				}
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1233,7 +1291,8 @@ class Interpreter {
 				$args = array_reverse($args);
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$object = $references->get($objectref);
 				$trace->push($this_class, $this_method, $pc);
@@ -1254,7 +1313,9 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				if(self::$debug_invoke) {
+					print("SPECIAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				}
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1264,7 +1325,8 @@ class Interpreter {
 				$args = array_reverse($args);
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$object = $references->get($objectref);
 				$trace->push($this_class, $this_method, $pc);
@@ -1285,7 +1347,9 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				if(self::$debug_invoke) {
+					print("STATIC: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				}
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1311,7 +1375,9 @@ class Interpreter {
 				$class_name = $constants[$constants[$method['class_index']]['name_index']]['bytes'];
 				$method_name = $constants[$method_info['name_index']]['bytes'];
 				$method_descriptor = $constants[$method_info['descriptor_index']]['bytes'];
-				//print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				if(self::$debug_invoke) {
+					print("VIRTUAL: '$class_name'.'$method_name' : '$method_descriptor'\n");
+				}
 				$descriptor = Interpreter::parseDescriptor($method_descriptor);
 				$argc = count($descriptor->args);
 				$args = array();
@@ -1321,7 +1387,8 @@ class Interpreter {
 				$args = array_reverse($args);
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$object = $references->get($objectref);
 				$trace->push($this_class, $this_method, $pc);
@@ -1529,7 +1596,8 @@ class Interpreter {
 					$value = $instance->getReference();
 					break;
 				case JAVA_CONSTANT_INTEGER:
-					throw new Exception('not implemented: integer');
+					$value = s32($constant['bytes']);
+					break;
 				case JAVA_CONSTANT_FLOAT:
 					$value = f32($constant['bytes']);
 					break;
@@ -1568,7 +1636,8 @@ class Interpreter {
 					$value = $constants[$constant['string_index']]['bytes'];
 					break;
 				case JAVA_CONSTANT_INTEGER:
-					throw new Exception('not implemented: integer');
+					$value = s32($constant['bytes']);
+					break;
 				case JAVA_CONSTANT_FLOAT:
 					$value = f32($constant['bytes']);
 					break;
@@ -1645,10 +1714,9 @@ class Interpreter {
 				break;
 			}
 			case 0xab: { // lookupswitch
-				throw new Exception('lookupswitch');
 				$boundary = ((int)($pc / 4)) * 4;
 				$diff = $pc - $boundary;
-				$offset = 3 - $diff; // FIXME: offset
+				$offset = 4 - $diff;
 				$defaultbyte1 = $code[$pc + $offset];
 				$defaultbyte2 = $code[$pc + $offset + 1];
 				$defaultbyte3 = $code[$pc + $offset + 2];
@@ -1661,17 +1729,17 @@ class Interpreter {
 				$npairs = ($npairs1 << 24) | ($npairs2 << 16) | ($npairs3 << 8) | $npairs4;
 				$pairs = array();
 				for($i = 0; $i < $npairs; $i++) {
-					$match1 = $code[$pc + $offset + $i * 8 + 0x08];
-					$match2 = $code[$pc + $offset + $i * 8 + 0x09];
-					$match3 = $code[$pc + $offset + $i * 8 + 0x0A];
-					$match4 = $code[$pc + $offset + $i * 8 + 0x0B];
-					$offset1 = $code[$pc + $offset + $i * 8 + 0x0C];
-					$offset2 = $code[$pc + $offset + $i * 8 + 0x0D];
-					$offset3 = $code[$pc + $offset + $i * 8 + 0x0E];
-					$offset4 = $code[$pc + $offset + $i * 8 + 0x0F];
+					$match1  = $code[$pc + $offset + ($i * 8) + 0x08];
+					$match2  = $code[$pc + $offset + ($i * 8) + 0x09];
+					$match3  = $code[$pc + $offset + ($i * 8) + 0x0A];
+					$match4  = $code[$pc + $offset + ($i * 8) + 0x0B];
+					$offset1 = $code[$pc + $offset + ($i * 8) + 0x0C];
+					$offset2 = $code[$pc + $offset + ($i * 8) + 0x0D];
+					$offset3 = $code[$pc + $offset + ($i * 8) + 0x0E];
+					$offset4 = $code[$pc + $offset + ($i * 8) + 0x0F];
 					$match = s32(($match1 << 24) | ($match2 << 16) | ($match3 << 8) | $match4);
-					$offset = s32(($offset1 << 24) | ($offset2 << 16) | ($offset30 << 8) | $offset4);
-					$pairs[$match] = $offset;
+					$jumpoffset = s32(($offset1 << 24) | ($offset2 << 16) | ($offset3 << 8) | $offset4);
+					$pairs[$match] = $jumpoffset;
 				}
 				$bytes += $offset + 8 + $npairs * 8;
 				$key = $stack->pop();
@@ -1841,7 +1909,8 @@ class Interpreter {
 				$value = $stack->pop();
 				$objectref = $stack->pop();
 				if($objectref === NULL) {
-					throw new NullPointerException();
+					$this->throwException('java/lang/NullPointerException');
+					return;
 				}
 				$object = $references->get($objectref);
 				// FIXME: correct implementation of putfield
@@ -1895,6 +1964,10 @@ class Interpreter {
 			case 0x35: { // saload, throws NullPointerException, throws ArrayIndexOutOfBoundsException
 				$index = $stack->pop();
 				$arrayref = $stack->pop();
+				if($arrayref === NULL) {
+					$this->throwException('java/lang/NullPointerException');
+					return;
+				}
 				$array = $references->get($arrayref);
 				$value = $arary->get($index);
 				$stack->push($value);
@@ -1926,23 +1999,40 @@ class Interpreter {
 			case 0xaa: { // tableswitch
 				$boundary = ((int)($pc / 4)) * 4;
 				$diff = $pc - $boundary;
-				$offset = 3 - $diff; // FIXME: offset
+				$offset = 4 - $diff;
 				$defaultbyte1 = $code[$pc + $offset];
 				$defaultbyte2 = $code[$pc + $offset + 1];
 				$defaultbyte3 = $code[$pc + $offset + 2];
 				$defaultbyte4 = $code[$pc + $offset + 3];
-				$default = ($defaultbyte1 << 24) | ($defaultbyte2 << 16) | ($defaultbyte3 << 8) | $defaultbyte4;
-				$lowbyte1 = $code[$pc + $offset + 4];
-				$lowbyte2 = $code[$pc + $offset + 5];
-				$lowbyte3 = $code[$pc + $offset + 6];
-				$lowbyte4 = $code[$pc + $offset + 7];
-				$highbyte1 = $code[$pc + $offset + 4];
-				$highbyte2 = $code[$pc + $offset + 5];
-				$highbyte3 = $code[$pc + $offset + 6];
-				$highbyte4 = $code[$pc + $offset + 7];
+				$default = s32(($defaultbyte1 << 24) | ($defaultbyte2 << 16) | ($defaultbyte3 << 8) | $defaultbyte4);
+				$lowbyte1  = $code[$pc + $offset + 0x04];
+				$lowbyte2  = $code[$pc + $offset + 0x05];
+				$lowbyte3  = $code[$pc + $offset + 0x06];
+				$lowbyte4  = $code[$pc + $offset + 0x07];
+				$highbyte1 = $code[$pc + $offset + 0x08];
+				$highbyte2 = $code[$pc + $offset + 0x09];
+				$highbyte3 = $code[$pc + $offset + 0x0A];
+				$highbyte4 = $code[$pc + $offset + 0x0B];
+				$low = s32(($lowbyte1 << 24) | ($lowbyte2 << 16) | ($lowbyte3 << 8) | $lowbyte4);
+				$high = s32(($highbyte1 << 24) | ($highbyte2 << 16) | ($highbyte3 << 8) | $highbyte4);
+				$count = $high - $low + 1;
+				$offsets = array();
+				for($i = 0; $i < $count; $i++) {
+					$byte1 = $code[$pc + $offset + ($i * 4) + 0x0C];
+					$byte2 = $code[$pc + $offset + ($i * 4) + 0x0D];
+					$byte3 = $code[$pc + $offset + ($i * 4) + 0x0E];
+					$byte4 = $code[$pc + $offset + ($i * 4) + 0x0F];
+					$offsets[] = s32(($byte1 << 24) | ($byte2 << 16) | ($byte3 << 8) | $byte4);
+				}
 				$index = $stack->pop();
-				// FIXME: correct implementation of tableswitch
-				throw new Exception('tableswitch');
+				if(($index < $low) || ($index > $high)) {
+					$pc += $default;
+					$bytes = 0;
+				} else {
+					$i = $index - $low;
+					$pc += $offsets[$i];
+					$bytes = 0;
+				}
 				break;
 			}
 			case 0xc4: { // wide

@@ -5,18 +5,26 @@
 class JVM {
 	private	$classpath;
 	private $classinstances;
+	private $primitiveclasses;
 	private $threads;
 	private $native;
 	public $references;
 	private $classes;
+	private $current_thread;
+	private $system_threadgroup;
+
+	private static $debug_loading = true;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
 		$this->classinstances = array();
+		$this->primitiveclasses = array();
 		$this->threads = array();
 		$this->references = new References();
 		$this->native = array();
 		$this->classes = array();
+		$this->current_thread = NULL;
+		$this->system_threadgroup = NULL;
 		foreach($params as $name => $value) {
 			switch($name) {
 			case 'classpath':
@@ -29,17 +37,96 @@ class JVM {
 	public function initialize() {
 		$this->loadSystemClass('java/lang/Object');
 		$this->loadSystemClass('java/lang/Class');
+		$this->registerClass('java/lang/Class');
+		$this->registerClass('java/lang/Object');
+		$this->registerPrimitives();
 		$this->load('java/lang/String');
+		$this->load('java/lang/Throwable');
+		$this->load('java/lang/Thread');
+		$this->load('java/lang/ThreadGroup');
 		$this->load('java/util/HashMap');
 		$this->load('java/lang/System');
 		$this->load('sun/misc/Unsafe');
+		$this->load('java/lang/reflect/Field');
+		$this->load('java/lang/reflect/Constructor');
+		$this->load('java/lang/reflect/AccessibleObject');
+		$this->load('java/lang/Class$Atomic');
 		return;
+
+		$trace = new StackTrace();
+		$trace->push('org/hackyourlife/jvm/JVM', 'initialize', 0, true);
+		$this->initialize_thread($trace);
+
+		$this->call('java/lang/System', 'initializeSystemClass', '()V', NULL, $trace);
+		$trace->pop();
+	}
+
+	private function initialize_thread($trace = NULL) {
+		if($trace === NULL) {
+			$trace = new StackTrace();
+		}
+
+		$threadgroup = $this->instantiate('java/lang/ThreadGroup');
+		$threadgroup_ref = $this->references->newref();
+		$this->references->set($threadgroup_ref, $threadgroup);
+		$threadgroup->setReference($threadgroup_ref);
+		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
+		$threadgroup->call('<init>', '()V', NULL, NULL, $trace);
+		$trace->pop();
+		$this->system_threadgroup = $threadgroup_ref;
+
+		$current_thread = $this->instantiate('java/lang/Thread');
+		$current_thread_ref = $this->references->newref();
+		$this->references->set($current_thread_ref, $current_thread);
+		$current_thread->setReference($current_thread_ref);
+		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
+		$thread = $this->getStatic('java/lang/Thread');
+		$normal_priority = $thread->getField('NORM_PRIORITY');
+		$current_thread->setField('daemon', 0);
+		$current_thread->setField('stillborn', 0);
+		$current_thread->setField('group', $threadgroup_ref);
+		$current_thread->setField('priority', $normal_priority);
+		$trace->pop();
+		$this->current_thread = $current_thread_ref;
+
+		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
+		$threadgroup->call('add', '(Ljava/lang/Thread;)V', array($threadgroup_ref), NULL, $trace);
+		$trace->pop();
+	}
+
+
+	private function setstdio($trace = NULL) {
+		$class = $this->getStatic('java/lang/System');
+		if($trace === NULL) {
+			$trace = new StackTrace();
+		}
+
+		$stdout = new JavaStandardOutputStream($this);
+		$stdoutref = $this->references->newref();
+		$this->references->set($stdoutref, $stdout);
+		$stdout->setReference($stdoutref);
+
+		$printstream = $this->instantiate('java/io/PrintStream');
+		$ref = $this->references->newref();
+		$this->references->set($ref, $printstream);
+		$printstream->setReference($ref);
+		$trace->push('org/hackyourlife/jvm/JVM', 'setstdio', 0, true);
+		$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array($stdoutref), NULL, $trace);
+		$trace->pop();
+
+		$class->setField('out', $ref);
+		$class->setField('err', $ref);
+
 	}
 
 	public function showClasses() {
 		foreach($this->classes as $name => $class) {
 			print("$name\n");
 		}
+	}
+
+	public function currentThread() {
+		return $this->current_thread;
 	}
 
 	private function locateClass($classname) {
@@ -56,7 +143,9 @@ class JVM {
 	private function loadSystemClass($classname) {
 		if(isset($this->classes[$classname]))
 			return;
-		print("[JVM] loading '$classname'\n");
+		if(self::$debug_loading) {
+			print("[JVM] loading '$classname'\n");
+		}
 		$filename = $this->locateClass($classname);
 		if($filename === false)
 			throw new ClassNotFoundException($classname);
@@ -67,7 +156,11 @@ class JVM {
 		$this->classes[$classname]->initialize();
 	}
 
-	private function registerClass($classname) {
+	private function registerClass($classname, $delayed_load = false) {
+		if(isset($this->classinstances[$classname])) {
+			$this->classinstances[$classname]->info->loaded = !$delayed_load;
+			return;
+		}
 		$class = $this->instantiate('java/lang/Class');
 		$ref = $this->references->newref();
 		$this->references->set($ref, $class);
@@ -76,9 +169,37 @@ class JVM {
 		$trace->push('org/hackyourlife/jvm/JVM', 'load', 0, true);
 		$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
 		$class->info = (object)array(
-			'name' => $classname
+			'name' => $classname,
+			'loaded' => !$delayed_load
 		);
 		$this->classinstances[$classname] = $ref;
+	}
+
+	private function registerPrimitives() {
+		$primitives = array(
+			JAVA_FIELDTYPE_BOOLEAN => 'boolean',
+			JAVA_FIELDTYPE_CHAR => 'char',
+			JAVA_FIELDTYPE_FLOAT => 'float',
+			JAVA_FIELDTYPE_DOUBLE => 'double',
+			JAVA_FIELDTYPE_BYTE => 'byte',
+			JAVA_FIELDTYPE_SHORT => 'short',
+			JAVA_FIELDTYPE_INTEGER => 'int',
+			JAVA_FIELDTYPE_LONG => 'long'
+		);
+		foreach($primitives as $primitive => $name) {
+			$class = $this->instantiate('java/lang/Class');
+			$ref = $this->references->newref();
+			$this->references->set($ref, $class);
+			$class->setReference($ref);
+			$trace = new StackTrace();
+			$trace->push('org/hackyourlife/jvm/JVM', 'load', 0, true);
+			$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
+			$class->info = (object)array(
+				'primitive' => $primitive,
+				'name' => $name
+			);
+			$this->primitiveclasses[$primitive] = $ref;
+		}
 	}
 
 	public function load($classname) {
@@ -87,7 +208,9 @@ class JVM {
 		}
 		if(isset($this->classes[$classname]))
 			return;
-		print("[JVM] loading '$classname'\n");
+		if(self::$debug_loading) {
+			print("[JVM] loading '$classname'\n");
+		}
 		if($classname == 'java/lang/Class') {
 			$this->showClasses();
 			throw new Exception();
@@ -134,12 +257,18 @@ class JVM {
 		return $call($this, $class, $args, $trace);
 	}
 
+	public function getPrimitiveClass($primitive) {
+		return $this->primitiveclasses[$primitive];
+	}
+
 	public function getClass($classname) {
 		if(!isset($this->classinstances[$classname])) {
 			if($classname[0] == '[') { // FIXME: array types
 				$this->registerClass($classname);
 			} else {
-				$this->load($classname);
+				//$this->load($classname);
+				// register class
+				$this->registerClass($classname, true);
 			}
 		}
 		return $this->classinstances[$classname];

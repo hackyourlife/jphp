@@ -4,10 +4,12 @@ class JavaClassInstance extends JavaObject {
 	public $staticclass;
 	private $fields;
 	private $super;
+	private $reference;
 
 	public function __construct(&$staticclass) {
 		$this->staticclass = &$staticclass;
 		$this->fields = array();
+		$this->reference = NULL;
 		foreach($staticclass->fields as $name => $field) {
 			if(!($field->access_flags & JAVA_ACC_STATIC)) {
 				$this->fields[$name] = clone $field;
@@ -32,6 +34,9 @@ class JavaClassInstance extends JavaObject {
 	}
 
 	public function getReference() {
+		if($this->reference === NULL) {
+			throw new Exception();
+		}
 		return $this->reference;
 	}
 

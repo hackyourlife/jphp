@@ -7,12 +7,21 @@ function str2bin($str) {
 	return $bin;
 }
 
+function s8($u8) {
+	$sign = $u8 & 0x80;
+	if($sign) {
+		return -(((~$u8) & 0xFF) + 1);
+	} else {
+		return $u8 & 0xFF;
+	}
+}
+
 function s16($u16) {
 	$sign = $u16 & 0x8000;
 	if($sign) {
 		return -(((~$u16) & 0xFFFF) + 1);
 	} else {
-		return $u16;
+		return $u16 & 0xFFFF;
 	}
 }
 
@@ -21,7 +30,7 @@ function s32($u32) {
 	if($sign) {
 		return -(((~$u32) & 0xFFFFFFFF) + 1);
 	} else {
-		return $u32;
+		return $u32 & 0xFFFFFFFF;
 	}
 }
 

@@ -105,6 +105,13 @@ class JavaClassStatic {
 		return $this->methods[$name][$signature];
 	}
 
+	public function getMethodById($id) {
+		if(!isset($this->classfile->methods[$id])) {
+			throw new Exception();
+		}
+		return $this->classfile->methods[$id];
+	}
+
 	public function getMethod($name, $signature, $classname = NULL) {
 		if(($classname !== NULL) && ($classname != $this->name)) {
 			$method_info = $this->jvm->getStatic($classname)->getMethod($name, $signature);
@@ -120,12 +127,23 @@ class JavaClassStatic {
 				'class' => $implemented_in
 			);
 		} else {
-			$methodId = $this->getMethodId($name, $signature);
-			$method = $this->classfile->methods[$methodId];
-			return (object)array(
-				'method' => $method,
-				'class' => $this->getName()
-			);
+			$classname = $this->findMethodClass($name, $signature);
+			if($classname == $this->name) {
+				$methodId = $this->getMethodId($name, $signature);
+				$method = $this->classfile->methods[$methodId];
+				return (object)array(
+					'method' => $method,
+					'class' => $this->getName()
+				);
+			} else {
+				$class = $this->jvm->getStatic($classname);
+				$methodId = $class->getMethodId($name, $signature);
+				$method = $class->getMethodById($methodId);
+				return (object)array(
+					'method' => $method,
+					'class' => $classname
+				);
+			}
 		}
 	}
 
@@ -187,6 +205,21 @@ class JavaClassStatic {
 				print("$name$signature\n");
 			}
 		}
+	}
+
+	public function getDeclaredFields($publiconly = true) {
+		$fields = array();
+		foreach($this->fields as $name => $field) {
+			if($publiconly && !($field['access_flags'] & JAVA_ACC_PUBLIC)) {
+				continue;
+			}
+			$fields[] = (object)array(
+				'name' => $name,
+				'modifiers' => $field->access_flags,
+				'signature' => $field->descriptor
+			);
+		}
+		return $fields;
 	}
 
 	public function getInterpreter($classname = NULL) {

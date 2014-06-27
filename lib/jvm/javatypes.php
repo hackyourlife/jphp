@@ -12,6 +12,8 @@ define('JAVA_T_LONG',				(int)11);
 abstract class JavaObject {
 	public function finalize() {
 	}
+	abstract public function setReference($reference);
+	abstract public function getReference();
 	abstract public function getName();
 	abstract public function isInstanceOf($T);
 }
@@ -21,6 +23,7 @@ class JavaArray extends JavaObject {
 	public $length;
 	public $type;
 	private $jvm;
+	private $reference;
 	public function __construct(&$jvm, $length, $type) {
 		$this->jvm = &$jvm;
 		$this->length = $length;
@@ -69,6 +72,14 @@ class JavaArray extends JavaObject {
 	}
 	public function getName() {
 		return "Array[{$this->type}]";
+	}
+
+	public function setReference($reference) {
+		$this->reference = $reference;
+	}
+
+	public function getReference() {
+		return $this->reference;
 	}
 
 	public function isInstanceOf($T) { // FIXME
