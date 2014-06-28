@@ -24,6 +24,7 @@ class JavaArray extends JavaObject {
 	public $type;
 	private $jvm;
 	private $reference;
+
 	public function __construct(&$jvm, $length, $type) {
 		$this->jvm = &$jvm;
 		$this->length = $length;
@@ -37,15 +38,18 @@ class JavaArray extends JavaObject {
 			$this->array[$i] = $initial;
 		}
 	}
+
 	public function get($index) {
 		if(!isset($this->array[$index])) {
 			return NULL;
 		}
 		return $this->array[$index];
 	}
+
 	public function set($index, $value) {
 		$this->array[$index] = $value;
 	}
+
 	public function toString() {
 		$types = array(
 			JAVA_T_BOOLEAN => 'boolean',
@@ -63,6 +67,7 @@ class JavaArray extends JavaObject {
 		}
 		return $type . '[' . implode(',', $this->array) . ']';
 	}
+
 	public function string() {
 		$string = '';
 		foreach($this->array as $char) {
@@ -70,6 +75,18 @@ class JavaArray extends JavaObject {
 		}
 		return $string;
 	}
+
+	public function bstring($off = 0, $len = NULL) {
+		$string = '';
+		if($len === NULL) {
+			$len = $this->length;
+		}
+		for($i = 0; $i < $len; $i++) {
+			$string .= chr($this->array[$i + $off] & 0xFF);
+		}
+		return $string;
+	}
+
 	public function getName() {
 		return "Array[{$this->type}]";
 	}

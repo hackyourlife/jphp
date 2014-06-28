@@ -4,6 +4,7 @@
 
 class JVM {
 	private	$classpath;
+	private $builtinlibpath;
 	private $classinstances;
 	private $primitiveclasses;
 	private $threads;
@@ -17,6 +18,7 @@ class JVM {
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
+		$this->builtinlibpath = 'lib/libs';
 		$this->classinstances = array();
 		$this->primitiveclasses = array();
 		$this->threads = array();
@@ -29,6 +31,9 @@ class JVM {
 			switch($name) {
 			case 'classpath':
 				$this->classpath = explode(PATH_SEPARATOR, $value);
+				break;
+			case 'builtinlibpath':
+				$this->builtinlibpath = $value;
 				break;
 			}
 		}
@@ -90,29 +95,16 @@ class JVM {
 		$trace->pop();
 	}
 
+	public function mapLibraryName($name) {
+		return "$name.php";
+	}
 
-	private function setstdio($trace = NULL) {
-		$class = $this->getStatic('java/lang/System');
-		if($trace === NULL) {
-			$trace = new StackTrace();
-		}
+	public function findBuiltinLib($name) {
+		return "{$this->builtinlibpath}/$name";
+	}
 
-		$stdout = new JavaStandardOutputStream($this);
-		$stdoutref = $this->references->newref();
-		$this->references->set($stdoutref, $stdout);
-		$stdout->setReference($stdoutref);
-
-		$printstream = $this->instantiate('java/io/PrintStream');
-		$ref = $this->references->newref();
-		$this->references->set($ref, $printstream);
-		$printstream->setReference($ref);
-		$trace->push('org/hackyourlife/jvm/JVM', 'setstdio', 0, true);
-		$printstream->callSpecial('<init>', '(Ljava/io/OutputStream;)V', array($stdoutref), NULL, $trace);
-		$trace->pop();
-
-		$class->setField('out', $ref);
-		$class->setField('err', $ref);
-
+	public function loadLibrary($name) {
+		require_once($name);
 	}
 
 	public function showClasses() {
@@ -238,7 +230,20 @@ class JVM {
 		//print_r($c->attributes);
 	}
 
+	public function reloadNatives() {
+		foreach($this->native as $classname => $value) {
+			$path = "lib/native/$classname.php";
+			if(!file_exists($path)) {
+				var_dump($path);
+				print("$classname:$method$signature\n");
+				throw new Exception();
+			}
+			require_once($path);
+		}
+	}
+
 	public function callNative($class, $method, $signature, $args, $classname, $trace) {
+		$name = str_replace('$', '_', $classname);
 		if(!isset($this->native[$classname])) {
 			$path = "lib/native/$classname.php";
 			if(!file_exists($path)) {
@@ -249,7 +254,7 @@ class JVM {
 			require_once($path);
 			$this->native[$classname] = true;
 		}
-		$path = str_replace('/', '_', $classname);
+		$path = str_replace('/', '_', $name);
 		$call = "Java_{$path}_$method";
 		return $call($this, $class, $args, $trace);
 	}

@@ -69,3 +69,49 @@ function Java_sun_misc_Unsafe_getIntVolatile(&$jvm, &$class, $args, $trace) {
 	$value = $object->getField($fieldname);
 	return $value;
 }
+
+// direct memory manipulation
+$MEMORY = array();
+$POINTER = 0;
+function Java_sun_misc_Unsafe_allocateMemory(&$jvm, &$class, $args, $trace) {
+	global $MEMORY;
+	global $POINTER;
+	$bytes = $args[0];
+	$address = ++$POINTER;
+	$MEMORY[$address] = (object)array(
+		'size' => $bytes,
+		'value' => array()
+	);
+	print("[MEMORY] allocated $bytes bytes: address = $address\n");
+	return $address;
+}
+
+function Java_sun_misc_Unsafe_freeMemory(&$jvm, &$class, $args, $trace) {
+	global $MEMORY;
+	$address = $args[0];
+	unset($MEMORY[$address]);
+	print("[MEMORY] freed $address\n");
+}
+
+function Java_sun_misc_Unsafe_putLong(&$jvm, &$class, $args, $trace) {
+	global $MEMORY;
+	$address = $args[0];
+	$x = $args[1];
+	print("[MEMORY] putLong to $address\n");
+	$mem = &$MEMORY[$address]->value;
+	$mem[0] = ($x >> 56) & 0xFF;
+	$mem[1] = ($x >> 48) & 0xFF;
+	$mem[2] = ($x >> 40) & 0xFF;
+	$mem[3] = ($x >> 32) & 0xFF;
+	$mem[4] = ($x >> 24) & 0xFF;
+	$mem[5] = ($x >> 16) & 0xFF;
+	$mem[6] = ($x >>  8) & 0xFF;
+	$mem[7] =  $x        & 0xFF;
+}
+
+function Java_sun_misc_Unsafe_getByte(&$jvm, &$class, $args, $trace) {
+	global $MEMORY;
+	$address = $args[0];
+	print("[MEMORY] readByte from $address\n");
+	return s8($MEMORY[$address]->value[0]);
+}

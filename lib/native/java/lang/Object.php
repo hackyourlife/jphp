@@ -13,3 +13,8 @@ function Java_java_lang_Object_getClass(&$jvm, &$class, $args, $trace) {
 	$classname = $class->getName();
 	return $jvm->getClass($classname);
 }
+
+// threading
+function Java_java_lang_Object_notifyAll(&$jvm, &$class, $args, $trace) {
+	return; // FIXME
+}

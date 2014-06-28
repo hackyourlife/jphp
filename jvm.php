@@ -27,9 +27,12 @@ $jvm->initialize();
 file_put_contents('state.jvm', serialize($jvm));
 echo(" done\n");
 
-$peak = memory_get_peak_usage();
+$peak = memory_get_peak_usage(true);
 $peak_mb = (int) ($peak / (1024 * 1024));
+$usage = memory_get_usage(true);
+$usage_mb = (int) ($usage / (1024 * 1024));
 print("peak usage: $peak_mb MiB\n");
+print("current usage: $usage_mb MiB\n");
 
 //$result = $jvm->call('factorial', 'factorial', '(I)J', array(6));
 //echo('result: '); var_dump($result);
@@ -47,6 +50,9 @@ $trace = new StackTrace();
 $helloworld = $jvm->getStatic('helloworld');
 $helloworld->call('main', '([Ljava/lang/String;)V', array($argsref), $trace);
 
-$peak = memory_get_peak_usage();
+$peak = memory_get_peak_usage(true);
 $peak_mb = (int) ($peak / (1024 * 1024));
+$usage = memory_get_usage(true);
+$usage_mb = (int) ($usage / (1024 * 1024));
 print("peak usage: $peak_mb MiB\n");
+print("current usage: $usage_mb MiB\n");

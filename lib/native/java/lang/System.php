@@ -20,6 +20,7 @@ function Java_java_lang_System_registerNatives(&$jvm, &$class, $args, $trace) {
 
 function Java_java_lang_System_initProperties(&$jvm, &$class, $args, $trace) {
 	$props = array(
+		'java.version' => '1.8.0',
 		'java.vendor' => 'hackyourlife',
 		'os.name' => 'PHP',
 		'os.version' => phpversion(),
@@ -58,7 +59,26 @@ function Java_java_lang_System_arraycopy(&$jvm, &$class, $args, $trace) {
 	array_splice($dst->array, $dstPos, $length, $tmp);
 }
 
+// I/O
 function Java_java_lang_System_setIn0(&$jvm, &$class, $args, $trace) {
 	$stdin = $args[0];
 	$class->setField('in', $stdin);
+}
+
+function Java_java_lang_System_setOut0(&$jvm, &$class, $args, $trace) {
+	$stdout = $args[0];
+	$class->setField('out', $stdout);
+}
+
+function Java_java_lang_System_setErr0(&$jvm, &$class, $args, $trace) {
+	$stderr = $args[0];
+	$class->setField('err', $stderr);
+}
+
+// libraries
+function Java_java_lang_System_mapLibraryName(&$jvm, &$class, $args, $trace) {
+	$libnamechars = $jvm->references->get($args[0])->getField('value');
+	$libname = $jvm->references->get($libnamechars)->string();
+	$lib = $jvm->mapLibraryName($libname);
+	return JavaString::newString($jvm, $lib);
 }
