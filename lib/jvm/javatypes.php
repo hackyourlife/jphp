@@ -68,6 +68,20 @@ class JavaArray extends JavaObject {
 		return $type . '[' . implode(',', $this->array) . ']';
 	}
 
+	public static function primitive($name) {
+		$types = array(
+			'boolean'	=> JAVA_T_BOOLEAN,
+			'char'		=> JAVA_T_CHAR,
+			'float'		=> JAVA_T_FLOAT,
+			'double'	=> JAVA_T_DOUBLE,
+			'byte'		=> JAVA_T_BYTE,
+			'short'		=> JAVA_T_SHORT,
+			'int'		=> JAVA_T_INT,
+			'long'		=> JAVA_T_LONG
+		);
+		return $types[$name];
+	}
+
 	public function string() {
 		$string = '';
 		foreach($this->array as $char) {
@@ -102,6 +116,8 @@ class JavaArray extends JavaObject {
 	public function isInstanceOf($T) { // FIXME
 		if($this->type == $T->getName()) {
 			return true;
+		} else if($T->getName() == 'java/lang/Object') {
+			return true;
 		}
 		return false;
 	}
@@ -123,22 +139,42 @@ class JavaArray extends JavaObject {
 	}
 
 	public function call($name, $signature, $args, $trace) {
-		// cloneable
-		if($name !== 'clone') {
-			throw new Exception();
-		}
-		if($signature !== '()Ljava/lang/Object;') {
-			throw new Exception($signature);
-		}
+		if($name == 'getClass') {
+			if($signature !== '()Ljava/lang/Class;') {
+				throw new Exception($signature);
+			}
 
-		$array = new JavaArray($this->jvm, $this->length, $this->type);
-		for($i = 0; $i < $this->length; $i++) {
-			$array->set($i, $this->array[$i]);
+			$types = array(
+				JAVA_T_BOOLEAN	=> JAVA_FIELDTYPE_BOOLEAN,
+				JAVA_T_CHAR	=> JAVA_FIELDTYPE_CHAR,
+				JAVA_T_FLOAT	=> JAVA_FIELDTYPE_FLOAT,
+				JAVA_T_DOUBLE	=> JAVA_FIELDTYPE_DOUBLE,
+				JAVA_T_BYTE	=> JAVA_FIELDTYPE_BYTE,
+				JAVA_T_SHORT	=> JAVA_FIELDTYPE_SHORT,
+				JAVA_T_INT	=> JAVA_FIELDTYPE_INTEGER,
+				JAVA_T_LONG	=> JAVA_FIELDTYPE_LONG
+			);
+			$type = "L$this->type;";
+			if(isset($types[$this->type])) {
+				$type = $types[$this->type];
+			}
+			$class = "[$type";
+			return $this->jvm->getClass($class);
+		} else if($name == 'clone') {
+			if($signature !== '()Ljava/lang/Object;') {
+				throw new Exception($signature);
+			}
+
+			$array = new JavaArray($this->jvm, $this->length, $this->type);
+			for($i = 0; $i < $this->length; $i++) {
+				$array->set($i, $this->array[$i]);
+			}
+			$arrayref = $this->jvm->references->newref();
+			$this->jvm->references->set($arrayref, $array);
+			$array->setReference($arrayref);
+			return $arrayref;
 		}
-		$arrayref = $this->jvm->references->newref();
-		$this->jvm->references->set($arrayref, $array);
-		$array->setReference($arrayref);
-		return $arrayref;
+		throw new Exception($name);
 	}
 }
 

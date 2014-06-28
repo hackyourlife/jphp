@@ -177,8 +177,43 @@ function Java_java_lang_Class_isInterface(&$jvm, &$class, $args, $trace) {
 	return $interface ? 1 : 0;
 }
 
+function Java_java_lang_Class_isArray(&$jvm, &$class, $args, $trace) {
+	return $class->info->array ? 1 : 0;
+}
+
+function Java_java_lang_Class_isPrimitive(&$jvm, &$class, $args, $trace) {
+	if(isset($class->info->primitive)) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+function Java_java_lang_Class_isAssignableFrom(&$jvm, &$class, $args, $trace) {
+	$cls = $jvm->references->get($args[0]);
+	if(isset($cls->info->primitive)) {
+		return ($cls->info->primitive === $class->info->primitive) ? 1 : 0;
+	} else {
+		$S = $jvm->getStatic($cls->info->name);
+		$T = $jvm->getStatic($class->info->name);
+		return $S->isInstanceOf($T) ? 1 : 0;
+	}
+}
+
 function Java_java_lang_Class_getName0(&$jvm, &$class, $args, $trace) {
 	$classname = str_replace('/', '.', $class->info->name);
 	$string = JavaString::newString($jvm, $classname);
 	return $string;
+}
+
+function Java_java_lang_Class_getComponentType(&$jvm, &$class, $args, $trace) {
+	if($class->info->array) {
+		if(isset($class->info->component_type->primitive)) {
+			return $jvm->getPrimitiveClass($class->info->component_type->primitive);
+		} else {
+			return $jvm->getClass($class->info->component_type->name);
+		}
+	} else {
+		return NULL;
+	}
 }

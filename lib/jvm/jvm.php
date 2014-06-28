@@ -144,7 +144,7 @@ class JVM {
 		$this->classes[$classname]->initialize();
 	}
 
-	private function registerClass($classname, $delayed_load = false) {
+	private function registerClass($classname, $delayed_load = false, $component_type = NULL) {
 		if(isset($this->classinstances[$classname])) {
 			$class = $this->references->get($this->classinstances[$classname]);
 			$class->info->loaded = !$delayed_load;
@@ -159,7 +159,9 @@ class JVM {
 		$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
 		$class->info = (object)array(
 			'name' => $classname,
-			'loaded' => !$delayed_load
+			'loaded' => !$delayed_load,
+			'array' => $component_type !== NULL,
+			'component_type' => $component_type
 		);
 		$this->classinstances[$classname] = $ref;
 	}
@@ -185,7 +187,9 @@ class JVM {
 			$class->callSpecial('<init>', '()V', NULL, NULL, $trace);
 			$class->info = (object)array(
 				'primitive' => $primitive,
-				'name' => $name
+				'name' => $name,
+				'loaded' => true,
+				'array' => false
 			);
 			$this->primitiveclasses[$primitive] = $ref;
 		}
@@ -260,13 +264,24 @@ class JVM {
 	}
 
 	public function getPrimitiveClass($primitive) {
+		if(!isset($this->primitiveclasses[$primitive])) {
+			throw new Exception('primitive not fund');
+		}
 		return $this->primitiveclasses[$primitive];
 	}
 
 	public function getClass($classname) {
 		if(!isset($this->classinstances[$classname])) {
 			if($classname[0] == '[') { // FIXME: array types
-				$this->registerClass($classname);
+				$type = new stdClass();
+				if($classname[1] == 'L') {
+					$ref = $this->getClass(substr($classname, 2, strlen($classname) - 3));
+					$type->name = $this->references->get($ref)->info->name;
+				} else {
+					$ref = $this->getPrimitiveClass(substr($classname, 1));
+					$type->primitive = $this->references->get($ref)->info->primitive;
+				}
+				$this->registerClass($classname, false, $type);
 			} else {
 				//$this->load($classname);
 				// register class
@@ -315,7 +330,6 @@ class JVM {
 			return NULL;
 		}
 	}
-
 }
 
 class References {

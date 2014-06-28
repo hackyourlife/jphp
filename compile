@@ -1,0 +1,2 @@
+#!/bin/sh
+javac -cp src/servlet-api-3.0.pre4.jar:src -d WEB-INF/classes src/org/hackyourlife/server/Server.java
