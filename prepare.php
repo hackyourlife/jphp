@@ -21,11 +21,11 @@ require_once('lib/jvm/jvm.php');
 set_time_limit(60);
 
 $classlist = array(
-	'java/io/PrintWriter',
+	//'java/io/PrintWriter',
 	'java/io/IOException',
-	'java/io/OutputStreamWriter',
-	'java/io/BufferedReader',
-	'java/io/InputStreamReader',
+	//'java/io/OutputStreamWriter',
+	//'java/io/BufferedReader',
+	//'java/io/InputStreamReader',
 	'java/lang/NullPointerException',
 	'java/util/ArrayList',
 	'java/util/RandomAccess',
@@ -35,11 +35,16 @@ $classlist = array(
 	'java/nio/charset/CoderResult$1',
 	'java/nio/charset/CoderResult$Cache',
 	'java/nio/charset/CoderResult$2',
-	'java/util/ResourceBundle',
-	'java/util/concurrent/ConcurrentHashMap',
+	//'java/util/ResourceBundle',
+	//'java/util/concurrent/ConcurrentHashMap',
+	//'java/util/Collection'
+	// servlet api
+	'javax/servlet/http/HttpServletRequest',
+	'javax/servlet/http/HttpServletResponse',
 	// application
 	'org/hackyourlife/server/HttpServletRequestImpl',
-	'org/hackyourlife/Server/HttpServletResponseImpl'
+	'org/hackyourlife/server/HttpServletResponseImpl',
+	'org/hackyourlife/server/ServletOutputStreamImpl',
 );
 echo('creating jvm...');
 $jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes'));
@@ -61,7 +66,22 @@ print("current usage: $usage_mb MiB\n");
 echo("initializing application\n");
 
 $trace = new StackTrace();
-$helloworld = $jvm->getStatic('org/hackyourlife/server/Server');
+$server = $jvm->getStatic('org/hackyourlife/server/Server');
+
+$servlets = array(
+	'/'	=> 'org/hackyourlife/webpage/Index'
+);
+
+foreach($servlets as $path => $class) {
+	$servlet = $jvm->instantiate($class);
+	$servletref = $jvm->references->newref();
+	$jvm->references->set($servletref, $servlet);
+	$servlet->setReference($servletref);
+	$servlet->callSpecial('<init>', '()V', NULL, NULL, $trace);
+	$pathref = JavaString::newString($jvm, $path);
+	$args = array($pathref, $servletref);
+	$jvm->call('org/hackyourlife/server/Server', 'registerServlet', '(Ljava/lang/String;Ljavax/servlet/http/HttpServlet;)V', $args, $trace);
+}
 
 file_put_contents('state.jvm', serialize($jvm));
 

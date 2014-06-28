@@ -4,19 +4,19 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.ServletOutputStream;
 
-import java.io.PrintWriter;
-import java.io.OutputStreamWriter;
+//import java.io.PrintWriter;
+//import java.io.OutputStreamWriter;
 
 import java.util.Hashtable;
-import java.util.Collection;
-import java.util.Locale;
+//import java.util.Collection;
+//import java.util.Locale;
 
 public class HttpServletResponseImpl implements HttpServletResponse {
 	private Hashtable<String,String> headers;
 	private int status;
 	private String contentType;
 	private ServletOutputStream out;
-	private PrintWriter writer;
+	//private PrintWriter writer;
 	private int contentLength;
 
 	protected HttpServletResponseImpl() {
@@ -24,7 +24,7 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 		status = 200;
 		contentType = "text/html";
 		out = new ServletOutputStreamImpl();
-		writer = new PrintWriter(new OutputStreamWriter(out));
+		//writer = new PrintWriter(new OutputStreamWriter(out));
 		contentLength = 0;
 	}
 
@@ -69,13 +69,13 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 		return headers.get(name);
 	}
 
-	public Collection<String> getHeaderNames() {
-		return headers.keySet();
-	}
+	//public Collection<String> getHeaderNames() {
+	//	return headers.keySet();
+	//}
 
-	public Collection<String> getHeaders(String name) {
-		return null;
-	}
+	//public Collection<String> getHeaders(String name) {
+	//	return null;
+	//}
 
 	public int getStatus() {
 		return status;
@@ -135,17 +135,17 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 		return contentType;
 	}
 
-	public Locale getLocale() {
-		return null;
-	}
+	//public Locale getLocale() {
+	//	return null;
+	//}
 
 	public ServletOutputStream getOutputStream() {
 		return out;
 	}
 
-	public PrintWriter getWriter() {
-		return writer;
-	}
+	//public PrintWriter getWriter() {
+	//	return writer;
+	//}
 
 	public boolean isCommitted() {
 		return true;
@@ -177,9 +177,9 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 		header0("content-type:" + type);
 	}
 
-	public void setLocale(Locale loc) {
-		return;
-	}
+	//public void setLocale(Locale loc) {
+	//	return;
+	//}
 
 	// natives
 	private native void header0(String header);

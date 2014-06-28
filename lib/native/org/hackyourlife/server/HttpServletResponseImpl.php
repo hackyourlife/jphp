@@ -71,3 +71,7 @@ function Java_org_hackyourlife_server_HttpServletResponseImpl_status0(&$jvm, &$c
 		header("$protocol $code $message");
 	}
 }
+
+function Java_org_hackyourlife_server_HttpServletResponseImpl_finish0(&$jvm, &$class, $args, $trace) {
+	exit(0);
+}

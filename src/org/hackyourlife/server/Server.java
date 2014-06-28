@@ -3,6 +3,9 @@ package org.hackyourlife.server;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.Servlet;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.ServletException;
 
 import java.io.IOException;
@@ -48,7 +51,7 @@ public class Server {
 			response.setStatus(404);
 			response.getOutputStream().println(getError404(requestURI));
 		} else {
-			servlet.service(request, response);
+			servlet.service((HttpServletRequest)request, (HttpServletResponse)response);
 		}
 	}
 }

@@ -3,11 +3,11 @@ import javax.servlet.ServletOutputStream;
 import java.io.IOException;
 
 public class ServletOutputStreamImpl extends ServletOutputStream {
-	public void write(int c) throws IOException {
-		System.out.write(c);
-	}
+	public native void write(int c) throws IOException;
 
 	public void write(byte[] c, int offset, int len) throws IOException {
-		System.out.write(c, offset, len);
+		write0(c, offset, len);
 	}
+
+	private native void write0(byte[] c, int offset, int len) throws IOException;
 }

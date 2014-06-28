@@ -11,16 +11,16 @@ import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.ServletContext;
-import java.security.Principal;
+//import java.security.Principal;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+//import java.io.BufferedReader;
+//import java.io.InputStreamReader;
 
 import java.util.Hashtable;
 import java.util.Enumeration;
-import java.util.Collection;
-import java.util.Locale;
-import java.util.Map;
+//import java.util.Collection;
+//import java.util.Locale;
+//import java.util.Map;
 
 public class HttpServletRequestImpl implements HttpServletRequest {
 	private String contextPath;
@@ -42,7 +42,7 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 	private Hashtable<String,String> parameters;
 	private String protocol;
 	private ServletInputStream in;
-	private BufferedReader reader;
+	//private BufferedReader reader;
 	private String remoteAddr;
 	private int remotePort;
 	private String scheme;
@@ -54,6 +54,19 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		attributes = new Hashtable<String,Object>();
 		//in = new ServletInputStreamImpl();
 		//reader = new BufferedReader(new InputStreamReader(in));
+		this.contextPath = contextPath;
+		this.method = method;
+		this.pathInfo = pathInfo;
+		this.queryString = queryString;
+		this.requestURI = requestURI;
+		this.requestURL = requestURL;
+		this.servletPath = servletPath;
+		this.protocol = protocol;
+		this.remoteAddr = remoteAddr;
+		this.remotePort = remotePort;
+		this.scheme = scheme;
+		this.serverName = serverName;
+		this.serverPort = serverPort;
 	}
 
 	// HttpServletRequest
@@ -101,9 +114,9 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		return null;
 	}
 
-	public Collection<Part> getParts() {
-		return null;
-	}
+	//public Collection<Part> getParts() {
+	//	return null;
+	//}
 
 	public String getPathInfo() {
 		return pathInfo;
@@ -145,9 +158,9 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		return null;
 	}
 
-	public Principal getUserPrincipal() {
-		return null;
-	}
+	//public Principal getUserPrincipal() {
+	//	return null;
+	//}
 
 	public boolean isRequestedSessionIdFromCookie() {
 		return false;
@@ -214,13 +227,13 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		return localAddr;
 	}
 
-	public Locale getLocale() {
-		return null;
-	}
+	//public Locale getLocale() {
+	//	return null;
+	//}
 
-	public Enumeration<Locale> getLocales() {
-		return null;
-	}
+	//public Enumeration<Locale> getLocales() {
+	//	return null;
+	//}
 
 	public String getLocalName() {
 		return localName;
@@ -234,9 +247,9 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		return parameters.get(name);
 	}
 
-	public Map<String,String[]> getParameterMap() {
-		return null;
-	}
+	//public Map<String,String[]> getParameterMap() {
+	//	return null;
+	//}
 
 	public Enumeration<String> getParameterNames() {
 		return parameters.keys();
@@ -250,9 +263,9 @@ public class HttpServletRequestImpl implements HttpServletRequest {
 		return protocol;
 	}
 
-	public BufferedReader getReader() {
-		return reader;
-	}
+	//public BufferedReader getReader() {
+	//	return reader;
+	//}
 
 	public String getRealPath(String path) {
 		return null;

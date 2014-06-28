@@ -1,0 +1,40 @@
+package javax.servlet.http;
+import javax.servlet.AsyncContext;
+import javax.servlet.DispatcherType;
+import javax.servlet.ServletInputStream;
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.ServletContext;
+import java.util.Enumeration;
+
+public interface HttpServletRequest extends ServletRequest {
+	public boolean authenticate(HttpServletResponse response);
+	public String getAuthType();
+	public String getContextPath();
+	public Cookie[] getCookies();
+	public long getDateHeader(String name);
+	public String getHeader(String name);
+	public Enumeration<String> getHeaderNames();
+	public Enumeration<String> getHeaders(String name);
+	public int getIntHeader(String name);
+	public String getMethod();
+	public Part getPart(String name);
+	public String getPathInfo();
+	public String getPathTranslated();
+	public String getQueryString();
+	public String getRemoteUser();
+	public String getRequestedSessionId();
+	public String getRequestURI();
+	public StringBuffer getRequestURL();
+	public String getServletPath();
+	public HttpSession getSession();
+	public HttpSession getSession(boolean create);
+	public boolean isRequestedSessionIdFromCookie();
+	public boolean isRequestedSessionIdFromUrl();
+	public boolean isRequestedSessionIdFromURL();
+	public boolean isRequestedSessionIdValid();
+	public boolean isUserInRole(String role);
+	public void login(String username, String password);
+	public void logout();
+}

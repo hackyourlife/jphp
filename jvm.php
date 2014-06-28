@@ -16,7 +16,6 @@ require_once('lib/jvm/javaclass.php');
 require_once('lib/jvm/javaclassstatic.php');
 require_once('lib/jvm/opcodes.php');
 require_once('lib/jvm/interpreter.php');
-require_once('lib/jvm/stdio.php');
 require_once('lib/jvm/jvm.php');
 
 set_time_limit(60);
