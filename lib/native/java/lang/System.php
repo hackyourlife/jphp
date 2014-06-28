@@ -35,7 +35,7 @@ function Java_java_lang_System_initProperties(&$jvm, &$class, $args, $trace) {
 	foreach($props as $key => $value) {
 		$string_key = JavaString::newString($jvm, $key);
 		$string_value = JavaString::newString($jvm, $value);
-		$properties->call('setProperty', '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;', array($string_key, $string_value), NULL, $trace);
+		$properties->call('setProperty', '(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Object;', array($string_key, $string_value), $trace);
 	}
 	$trace->pop();
 }

@@ -177,8 +177,7 @@ class Interpreter {
 			} catch(JavaException $e) {
 				$exception = $this->references->get($e->getMessage());
 				$trace = new StackTrace();
-				$class = $exception->findMethodClass('getMessage', '()Ljava/lang/String;');
-				$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
+				$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $trace);
 				if($messageref !== NULL) {
 					$message = $this->references->get($messageref);
 					$chars = $this->references->get($message->getField('value'));
@@ -213,8 +212,7 @@ class Interpreter {
 				if($this->exception) {
 					$exception = $this->references->get($this->result);
 					$trace = new StackTrace();
-					$class = $exception->findMethodClass('getMessage', '()Ljava/lang/String;');
-					$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $class, $trace);
+					$messageref = $exception->call('getMessage', '()Ljava/lang/String;', NULL, $trace);
 					if($messageref !== NULL) {
 						$message = $this->references->get($messageref);
 						$chars = $this->references->get($message->getField('value'));
@@ -241,6 +239,8 @@ class Interpreter {
 		//	$msg = "$name: $message";
 		//}
 		//throw new Exception($msg);
+
+		$this->trace->push($this->this_class, $this->this_method, $this->pc);
 
 		$exception = $this->jvm->instantiate($name);
 		$exceptionref = $this->jvm->references->newref();
@@ -469,7 +469,7 @@ class Interpreter {
 						print("[CHECKCAST] {$object->getName()} can cast to {$T->getName()} = $result\n");
 					}
 					if(!$result) {
-						self::throwException('java/lang/ClassCastException', "{$object->getName()} cannot cast to {$T->getName()}");
+						$this->throwException('java/lang/ClassCastException', "{$object->getName()} cannot cast to {$T->getName()}");
 					}
 				}
 				break;
@@ -885,7 +885,6 @@ class Interpreter {
 				try {
 					$value = $object->getField($field_name);
 				} catch(NoSuchFieldException $e) {
-					$trace->push($this_class, $this_method, $pc);
 					$object->dump();
 					$this->throwException('java/lang/NoSuchFieldError', "$class_name:$field_name");
 				}
@@ -905,7 +904,6 @@ class Interpreter {
 					$value = $class->getField($field_name);
 				} catch(NoSuchFieldException $e) {
 					$class->dump();
-					$trace->push($this_class, $this_method, $pc);
 					$this->throwException('java/lang/NoSuchFieldError', "$class_name:$field_name");
 				}
 				$stack->push($value);
@@ -1441,7 +1439,7 @@ class Interpreter {
 				}
 				$object = $references->get($objectref);
 				$trace->push($this_class, $this_method, $pc);
-				$value = $object->call($method_name, $method_descriptor, $args, $class_name, $trace);
+				$value = $object->call($method_name, $method_descriptor, $args, $trace);
 				$trace->pop();
 				if($descriptor->returns != 'V') {
 					$stack->push($value);

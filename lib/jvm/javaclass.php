@@ -129,10 +129,7 @@ class JavaClassInstance extends JavaObject {
 		return $this->staticclass->findMethodClass($name, $signature);
 	}
 
-	public function call($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
-		if($trace == NULL) {
-			throw new Exception();
-		}
+	public function call($name, $signature, $args = NULL, $trace = NULL, $classname = NULL) {
 		$method_info = $this->staticclass->getMethod($name, $signature, $classname);
 		$method = &$method_info->method;
 		$implemented_in = $method_info->class;
@@ -158,11 +155,11 @@ class JavaClassInstance extends JavaObject {
 	}
 
 	public function callSpecial($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
-		return $this->call($name, $signature, $args, $classname, $trace);
+		return $this->call($name, $signature, $args, $trace, $classname);
 	}
 
 	public function callInterface($name, $signature, $args = NULL, $classname = NULL, $trace = NULL) {
-		return $this->call($name, $signature, $args, $classname, $trace);
+		return $this->call($name, $signature, $args, $trace);
 	}
 }
 

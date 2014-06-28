@@ -105,7 +105,7 @@ class JavaArray extends JavaObject {
 		}
 	}
 
-	public function call($name, $signature, $args, $classname, $trace) {
+	public function call($name, $signature, $args, $trace) {
 		// cloneable
 		if($name !== 'clone') {
 			throw new Exception();

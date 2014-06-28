@@ -178,5 +178,7 @@ function Java_java_lang_Class_isInterface(&$jvm, &$class, $args, $trace) {
 }
 
 function Java_java_lang_Class_getName0(&$jvm, &$class, $args, $trace) {
-	return $class->info->name;
+	$classname = str_replace('/', '.', $class->info->name);
+	$string = JavaString::newString($jvm, $classname);
+	return $string;
 }

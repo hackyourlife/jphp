@@ -6,7 +6,7 @@ function Java_sun_reflect_NativeConstructorAccessorImpl_newInstance0(&$jvm, &$cl
 	if($args !== NULL) {
 		throw new Exception('not implemented');
 	}
-	$trace->push('sun/reflect/NativeConstructorAccesorImpl', 'newInstance0', 0, true);
+	$trace->push('sun/reflect/NativeConstructorAccessorImpl', 'newInstance0', 0, true);
 	$clazz = $jvm->references->get($constructor->getField('clazz'));
 	$classname = $clazz->info->name;
 	$signaturechars = $jvm->references->get($constructor->getField('signature'))->getField('value');

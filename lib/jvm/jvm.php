@@ -13,7 +13,7 @@ class JVM {
 	private $current_thread;
 	private $system_threadgroup;
 
-	private static $debug_loading = false;
+	private static $debug_loading = true;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
@@ -41,20 +41,17 @@ class JVM {
 		$this->registerClass('java/lang/Object');
 		$this->registerPrimitives();
 		$this->load('java/lang/String');
-		$this->load('java/lang/Throwable');
-		$this->load('java/lang/Thread');
+		//$this->load('java/lang/Throwable');
+		//$this->load('java/lang/Thread');
 		$this->load('java/lang/ThreadGroup');
-		$this->load('java/util/HashMap');
-		$this->load('java/lang/System');
+		//$this->load('java/lang/System');
 		$this->load('sun/misc/Unsafe');
-		$this->load('java/lang/reflect/Field');
-		$this->load('java/lang/reflect/Constructor');
-		$this->load('java/lang/reflect/AccessibleObject');
-		$this->load('java/lang/Class$Atomic');
 
 		$trace = new StackTrace();
 		$trace->push('org/hackyourlife/jvm/JVM', 'initialize', 0, true);
 		$this->initialize_thread($trace);
+
+		//$this->load('reflection');
 
 		$this->call('java/lang/System', 'initializeSystemClass', '()V', NULL, $trace);
 		$trace->pop();
@@ -70,7 +67,7 @@ class JVM {
 		$this->references->set($threadgroup_ref, $threadgroup);
 		$threadgroup->setReference($threadgroup_ref);
 		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
-		$threadgroup->call('<init>', '()V', NULL, NULL, $trace);
+		$threadgroup->call('<init>', '()V', NULL, $trace);
 		$trace->pop();
 		$this->system_threadgroup = $threadgroup_ref;
 
@@ -89,7 +86,7 @@ class JVM {
 		$this->current_thread = $current_thread_ref;
 
 		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
-		$threadgroup->call('add', '(Ljava/lang/Thread;)V', array($threadgroup_ref), NULL, $trace);
+		$threadgroup->call('add', '(Ljava/lang/Thread;)V', array($threadgroup_ref), $trace);
 		$trace->pop();
 	}
 
