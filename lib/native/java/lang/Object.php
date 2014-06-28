@@ -8,3 +8,8 @@ function Java_java_lang_Object_hashCode(&$jvm, &$class, $args, $trace) {
 	//print("[HASH] {$class->getName()}\n");
 	return $class->getReference(); // FIXME
 }
+
+function Java_java_lang_Object_getClass(&$jvm, &$class, $args, $trace) {
+	$classname = $class->getName();
+	return $jvm->getClass($classname);
+}
