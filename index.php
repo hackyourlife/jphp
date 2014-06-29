@@ -18,10 +18,11 @@ require_once('lib/jvm/jvm.php');
 
 $jvm = unserialize(file_get_contents('state.jvm'));
 $jvm->reloadNatives();
+$jvm->setFSRoot(dirname(__FILE__));
 
 header('content-type: text/plain');
-$query_string = $_SERVER['REDIRECT_QUERY_STRING'];
-$url = $_SERVER['REDIRECT_URL'];
+$query_string = isset($_SERVER['REDIRECT_QUERY_STRING']) ? $_SERVER['REDIRECT_QUERY_STRING'] : $_SERVER['QUERY_STRING'];
+$url = isset($_SERVER['REDIRECT_URL']) ? $_SERVER['REDIRECT_URL'] : $_SERVER['SCRIPT_NAME'];
 
 $contextPath = dirname($_SERVER['PHP_SELF']);
 $offset = strlen($contextPath);
@@ -32,7 +33,7 @@ if(strpos($uri, '?') !== false) {
 	$queryString = substr($uri, strpos($uri, '?') + 1);
 }
 $method = $_SERVER['REQUEST_METHOD'];
-$requestURI = substr($_SERVER['REDIRECT_URL'], $offset);
+$requestURI = substr($url, $offset);
 $requestURL = $uri;
 $serverName = $_SERVER['SERVER_NAME'];
 $serverPort = $_SERVER['SERVER_PORT'];

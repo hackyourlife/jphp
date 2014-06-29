@@ -13,6 +13,7 @@ class JVM {
 	private $classes;
 	private $current_thread;
 	private $system_threadgroup;
+	private $fsroot;
 
 	private static $debug_loading = true;
 
@@ -27,6 +28,7 @@ class JVM {
 		$this->classes = array();
 		$this->current_thread = NULL;
 		$this->system_threadgroup = NULL;
+		$this->fsroot = '/';
 		foreach($params as $name => $value) {
 			switch($name) {
 			case 'classpath':
@@ -34,6 +36,9 @@ class JVM {
 				break;
 			case 'builtinlibpath':
 				$this->builtinlibpath = $value;
+				break;
+			case 'fsroot':
+				$this->fsroot = $value;
 				break;
 			}
 		}
@@ -93,6 +98,47 @@ class JVM {
 		$trace->push('org/hackyourlife/jvm/JVM', 'initialize_thread', 0, true);
 		$threadgroup->call('add', '(Ljava/lang/Thread;)V', array($threadgroup_ref), $trace);
 		$trace->pop();
+	}
+
+	public function getFSRoot() {
+		return $this->fsroot;
+	}
+
+	public function getRealPath($path) {
+		$path = str_replace('\\', '/', $path); // convert windows style path
+		$tokens = explode('/', $path);
+		$p = array();
+		foreach($tokens as $token) {
+			if($token == '.') {
+				continue;
+			} else if($token == '..') {
+				if(count($p) > 0) {
+					array_pop($p);
+				}
+			} else if($token == '') {
+				continue;
+			} else {
+				array_push($p, $token);
+			}
+		}
+		$new_path = implode('/', $p);
+		if($path[0] == '/') {
+			return "/$new_path";
+		} else {
+			return $new_path;
+		}
+	}
+
+	public function setFSRoot($path) {
+		$this->fsroot = $path;
+	}
+
+	public function getFSPath($path) {
+		$path = $this->getRealPath($path);
+		if($path[0] == '/') {
+			$path = substr($path, 1);
+		}
+		return "{$this->fsroot}/$path";
 	}
 
 	public function mapLibraryName($name) {

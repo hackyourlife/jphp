@@ -23,18 +23,29 @@ set_time_limit(60);
 $classlist = array(
 	//'java/io/PrintWriter',
 	'java/io/IOException',
-	//'java/io/OutputStreamWriter',
+	'java/io/OutputStreamWriter',
 	//'java/io/BufferedReader',
 	//'java/io/InputStreamReader',
+	'java/lang/Enum',
 	'java/lang/NullPointerException',
 	'java/util/ArrayList',
 	'java/util/RandomAccess',
+	'java/util/ArrayList$SubList',
+	'java/util/ArrayList$SubList$1',
 	'java/nio/CharBuffer',
 	'java/nio/HeapCharBuffer',
 	'java/nio/charset/CoderResult',
 	'java/nio/charset/CoderResult$1',
 	'java/nio/charset/CoderResult$Cache',
 	'java/nio/charset/CoderResult$2',
+	'java/io/File',
+	'java/io/File$PathStatus',
+	'java/io/Reader',
+	'java/io/Writer',
+	'java/io/BufferedReader',
+	'java/io/StringWriter',
+	'java/io/FileInputStream',
+	'java/io/FileInputStream$1',
 	//'java/util/ResourceBundle',
 	//'java/util/concurrent/ConcurrentHashMap',
 	//'java/util/Collection'
@@ -47,7 +58,7 @@ $classlist = array(
 	'org/hackyourlife/server/ServletOutputStreamImpl',
 );
 echo('creating jvm...');
-$jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes'));
+$jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes', 'fsroot' => dirname(__FILE__)));
 $jvm->initialize();
 echo(" done\n");
 
@@ -68,19 +79,30 @@ echo("initializing application\n");
 $trace = new StackTrace();
 $server = $jvm->getStatic('org/hackyourlife/server/Server');
 
-$servlets = array(
-	'/'	=> 'org/hackyourlife/webpage/Index'
+$servlet_names = array(
+	'index'	=> 'org/hackyourlife/webpage/Index'
 );
 
-foreach($servlets as $path => $class) {
+$servlet_paths = array(
+	'/'	=> 'index'
+);
+
+foreach($servlet_names as $name => $class) {
 	$servlet = $jvm->instantiate($class);
 	$servletref = $jvm->references->newref();
 	$jvm->references->set($servletref, $servlet);
 	$servlet->setReference($servletref);
 	$servlet->callSpecial('<init>', '()V', NULL, NULL, $trace);
-	$pathref = JavaString::newString($jvm, $path);
-	$args = array($pathref, $servletref);
+	$nameref = JavaString::newString($jvm, $name);
+	$args = array($nameref, $servletref);
 	$jvm->call('org/hackyourlife/server/Server', 'registerServlet', '(Ljava/lang/String;Ljavax/servlet/http/HttpServlet;)V', $args, $trace);
+}
+
+foreach($servlet_paths as $path => $name) {
+	$pathref = JavaString::newString($jvm, $path);
+	$nameref = JavaString::newString($jvm, $name);
+	$args = array($pathref, $nameref);
+	$jvm->call('org/hackyourlife/server/Server', 'mapServlet', '(Ljava/lang/String;Ljava/lang/String;)V', $args, $trace);
 }
 
 file_put_contents('state.jvm', serialize($jvm));

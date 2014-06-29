@@ -2,4 +2,5 @@
 #javac -cp src/servlet-api.jar:src -d WEB-INF/classes src/org/hackyourlife/server/Server.java
 javac -cp src -d WEB-INF/classes src/org/hackyourlife/server/Server.java
 
-javac -cp src/servlet-api.jar:src -d WEB-INF/classes src/org/hackyourlife/webpage/Index.java
+javac -cp src/servlet-api.jar:src -d WEB-INF/classes src/org/hackyourlife/webpage/Index.java || exit
+javac -cp src/servlet-api.jar:src -d jetty/webapps/php/WEB-INF/classes src/org/hackyourlife/webpage/Index.java
