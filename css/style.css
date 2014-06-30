@@ -1,0 +1,150 @@
+body {
+	font-family: arial, sans-serif;
+	font-size: 16px;
+	background-color: #000;
+	color: #aaa;
+}
+
+pre, code, table.code {
+	font-family: Consolas, "Courier New", "Lucida Console", monospace;
+	padding: 0;
+	margin: 0;
+}
+
+pre {
+	overflow-x: auto;
+}
+
+div.code {
+	white-space: pre !important;
+}
+
+h1 {
+	border-bottom: 1px solid #888;
+}
+
+a {
+	text-decoration: none;
+	color: #666;
+}
+
+a:hover {
+	color: #aaa;
+	text-decoration: underline;
+}
+
+p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+}
+
+table {
+	border: 1px solid #ccc;
+	border-collapse: collapse;
+	clear: both;
+	width: 100%;
+}
+
+th {
+	text-align: left;
+	font-weight: bold;
+}
+
+th, td {
+	padding: 5px;
+}
+
+thead tr {
+	border-bottom: 1px solid #ccc;
+	background-color: #333;
+}
+
+tbody tr, td {
+	border-bottom: 1px solid #ccc;
+}
+
+table.list tbody tr:nth-child(odd) {
+	background-color: #111;
+}
+
+table.list tbody tr:hover {
+	background-color: #222;
+}
+
+div.container {
+	overflow: auto;
+	margin-bottom: 1em;
+	margin-top: 1em;
+}
+
+table.code, code, .code {
+	background-color: #111;
+}
+
+table.code {
+	border: none;
+	width: 100%;
+}
+
+table.code tr > td:first-child {
+	padding: 0;
+	margin: 0;
+	text-align: right;
+	border-right: 1px solid #333;
+}
+
+table.code td {
+	overflow: hidden;
+}
+
+table.list tr td > code {
+	background-color: inherit;
+}
+
+#footer {
+	margin-top: 20px;
+	border-top: 1px solid #888;
+	padding-top: 5px;
+	text-align: center;
+	font-size: 14px;
+}
+
+.phptag {
+	color: #FF0000;
+}
+.keyword {
+	color: #0000FF
+}
+.function {
+	color: #FF0000;
+}
+.constant {
+	color: #00FF00;
+}
+.comment {
+	color: #008080;
+}
+.string {
+	color: #606060;
+}
+.variable {
+	color: #FF8000;
+}
+.number {
+	color: #FF0000;
+}
+.tag {
+	color: #0000FF;
+}
+.htmlcomment {
+	color: #008000;
+}
+.htmlproperty {
+	color: #FF0000;
+}
+
+/* forms */
+input[type=textfield], textarea {
+	color: #fff;
+	background-color: #111;
+}

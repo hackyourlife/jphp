@@ -173,9 +173,9 @@ class JavaString extends JavaClassInstance {
 		parent::__construct($jvm->getStatic('java/lang/String'));
 		$this->jvm = &$jvm;
 		$this->string = $s;
-		$chars = new JavaArray($jvm, strlen($s), JAVA_T_CHAR);
-		for($i = 0; $i < strlen($s); $i++) {
-			$chars->set($i, ord($s[$i]));
+		$chars = new JavaArray($jvm, JavaString::strlen($s), JAVA_T_CHAR);
+		for($i = 0; $i < JavaString::strlen($s); $i++) {
+			$chars->set($i, JavaString::ord(JavaString::charAt($s, $i)));
 		}
 		$this->dataref = $jvm->references->newref();
 		$jvm->references->set($this->dataref, $chars);
@@ -193,9 +193,38 @@ class JavaString extends JavaClassInstance {
 		$this->jvm->references->free($this->dataref);
 	}
 
-	public function getString() {
-		return $this->string;
+	public static function charAt($str, $pos) {
+		return mb_substr($str, $pos, 1, "UTF-8");
 	}
+
+	public static function strlen($str) {
+		return mb_strlen($str, 'UTF-8');
+	}
+
+	public static function ord($char) {
+		$lead = ord($char[0]);
+
+		if ($lead < 0x80) {
+			return $lead;
+		} else if ($lead < 0xE0) {
+			return (($lead & 0x1F) << 6)
+				| (ord($char[1]) & 0x3F);
+		} else if ($lead < 0xF0) {
+			return (($lead &  0xF) << 12)
+				| ((ord($char[1]) & 0x3F) <<  6)
+				|  (ord($char[2]) & 0x3F);
+		} else {
+			return (($lead &  0x7) << 18)
+				| ((ord($char[1]) & 0x3F) << 12)
+				| ((ord($char[2]) & 0x3F) <<  6)
+				|  (ord($char[3]) & 0x3F);
+		}
+	}
+
+	public static function chr($intval) {
+		return mb_convert_encoding(pack('n', $intval), 'UTF-8', 'UTF-16BE');
+	}
+
 
 	public static function intern(&$jvm, $objectref) {
 		$string = $jvm->references->get($objectref);

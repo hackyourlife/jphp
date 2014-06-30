@@ -1643,7 +1643,7 @@ class Interpreter {
 					$value = s32($constant['bytes']);
 					break;
 				case JAVA_CONSTANT_FLOAT:
-					$value = f32($constant['bytes']);
+					$value = JavaClass::bits2float($constant['bytes']);
 					break;
 				case JAVA_CONSTANT_LONG:
 					throw new Exception('not implemented: long');
@@ -1684,7 +1684,7 @@ class Interpreter {
 					$value = s32($constant['bytes']);
 					break;
 				case JAVA_CONSTANT_FLOAT:
-					$value = f32($constant['bytes']);
+					$value = JavaClass::bits2float($constant['bytes']);
 					break;
 				case JAVA_CONSTANT_LONG:
 				case JAVA_CONSTANT_DOUBLE:
@@ -1706,7 +1706,7 @@ class Interpreter {
 				$constant = $constants[$index];
 				$value = ($constant['high_bytes'] << 32) | $constant['low_bytes'];
 				if($constant['type'] == JAVA_CONSTANT_DOUBLE) {
-					$value = f64($value);
+					$value = JavaClass::bits2double($value);
 				}
 				$stack->push($value);
 				break;

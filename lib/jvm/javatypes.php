@@ -85,7 +85,7 @@ class JavaArray extends JavaObject {
 	public function string() {
 		$string = '';
 		foreach($this->array as $char) {
-			$string .= chr($char);
+			$string .= JavaString::chr($char);
 		}
 		return $string;
 	}

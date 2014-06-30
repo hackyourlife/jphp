@@ -100,6 +100,14 @@ class JVM {
 		$trace->pop();
 	}
 
+	public function getClasspath() {
+		return implode(':', $this->classpath);
+	}
+
+	public function getLibraryPath() {
+		return $this->builtinlibpath;
+	}
+
 	public function getFSRoot() {
 		return $this->fsroot;
 	}

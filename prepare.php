@@ -27,11 +27,19 @@ $classlist = array(
 	//'java/io/BufferedReader',
 	//'java/io/InputStreamReader',
 	'java/lang/Enum',
+	'java/lang/Byte',
+	'java/lang/StringBuffer',
 	'java/lang/NullPointerException',
+	'java/lang/ThreadLocal$ThreadLocalMap',
+	'java/lang/ThreadLocal$ThreadLocalMap$Entry',
+	'java/lang/StringCoding',
+	'java/lang/StringCoding$StringEncoder',
 	'java/util/ArrayList',
 	'java/util/RandomAccess',
 	'java/util/ArrayList$SubList',
 	'java/util/ArrayList$SubList$1',
+	'java/util/Vector',
+	'java/util/Vector$Itr',
 	'java/nio/CharBuffer',
 	'java/nio/HeapCharBuffer',
 	'java/nio/charset/CoderResult',
@@ -43,12 +51,14 @@ $classlist = array(
 	'java/io/Reader',
 	'java/io/Writer',
 	'java/io/BufferedReader',
+	'java/io/StringReader',
 	'java/io/StringWriter',
 	'java/io/FileInputStream',
 	'java/io/FileInputStream$1',
 	//'java/util/ResourceBundle',
 	//'java/util/concurrent/ConcurrentHashMap',
 	//'java/util/Collection'
+	'sun/nio/cs/ArrayEncoder',
 	// servlet api
 	'javax/servlet/http/HttpServletRequest',
 	'javax/servlet/http/HttpServletResponse',
@@ -56,6 +66,8 @@ $classlist = array(
 	'org/hackyourlife/server/HttpServletRequestImpl',
 	'org/hackyourlife/server/HttpServletResponseImpl',
 	'org/hackyourlife/server/ServletOutputStreamImpl',
+	'org/hackyourlife/webpage/Webpage',
+	'org/hackyourlife/webpage/Layout'
 );
 echo('creating jvm...');
 $jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes', 'fsroot' => dirname(__FILE__)));
