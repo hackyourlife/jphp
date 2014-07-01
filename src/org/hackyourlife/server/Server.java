@@ -45,20 +45,44 @@ public class Server {
 		servletMappings.put(url, name);
 	}
 
+	private static String getError(int status, String title, String description, String type, String exception, String note) {
+		StringBuffer message = new StringBuffer();
+		message.append("<html><head><title>" + version + " - Error report</title><style>"
+			+ "<!--H1 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:22px;}"
+			+ "H2 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:16px;}"
+			+ "H3 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:14px;}"
+			+ "BODY {font-family:Tahoma,Arial,sans-serif;color:black;background-color:white;}"
+			+ "B {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;}"
+			+ "P {font-family:Tahoma,Arial,sans-serif;background:white;color:black;font-size:12px;}"
+			+ "A {color : black;}A.name {color : black;}HR {color : #525D76;}--></style></head><body>"
+			+ "<h1>HTTP Status " + status + " - " + title + "</h1><HR size=\"1\" noshade=\"noshade\">");
+		if(type != null) {
+			message.append("<p><b>type</b> " + type + "</p>");
+		}
+		message.append("<p><b>message</b> <u>" + title + "</u></p><p>"
+			+ "<b>description</b> <u>" + description + "</u></p>");
+		if(exception != null) {
+			message.append("<p><b>exception</b> <pre>" + exception + "</pre></p>");
+		}
+		if(note != null) {
+			message.append("<p><b>note</b> <u>The full stack trace of the root cause is available in the " + version + " logs.</u></p>");
+		}
+		message.append("<HR size=\"1\" noshade=\"noshade\"><h3>" + version + "</h3></body></html>");
+		return message.toString();
+	}
+
+	private static String getError500(String msg, String trace) {
+		String description = "The server encountered an internal error that prevented it from fulfilling this request.";
+		String note = "The full stack trace of the root cause is available in the " + version + " logs.";
+		if(trace == null) {
+			return getError(500, msg, description, "Exception report", null, null);
+		} else {
+			return getError(500, msg, description, "Exception report", trace, note);
+		}
+	}
+
 	private static String getError404(String requestURI) {
-		String message =
-			"<html><head><title>" + version + " - Error report</title><style>" +
-			"<!--H1 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:22px;}" +
-			" H2 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:16px;}" +
-			" H3 {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;font-size:14px;}" +
-			" BODY {font-family:Tahoma,Arial,sans-serif;color:black;background-color:white;}" +
-			" B {font-family:Tahoma,Arial,sans-serif;color:white;background-color:#525D76;}" +
-			" P {font-family:Tahoma,Arial,sans-serif;background:white;color:black;font-size:12px;}" +
-			" A {color : black;}A.name {color : black;}HR {color : #525D76;}--></style></head><body>" +
-			"<h1>HTTP Status 404 - " + requestURI + "</h1><HR size=\"1\" noshade=\"noshade\"><p><b>type</b> Status report</p>" +
-			"<p><b>message</b> <u>" + requestURI + "</u></p><p><b>description</b> <u>The requested resource is not available.</u></p>" +
-			"<HR size=\"1\" noshade=\"noshade\"><h3>" + version + "</h3></body></html>";
-		return message;
+		return getError(404, requestURI, "The requested resource is not available.", "Status report", null, null);
 	}
 
 	public static String getFileExtension(String path) {
@@ -109,8 +133,25 @@ public class Server {
 	}
 
 	public static void service(String contextPath, String method, String pathInfo, String queryString, String requestURI, String requestURL, String serverName, int serverPort, String remoteAddr, int remotePort, String scheme, String protocol) throws IOException, ServletException {
-		String name = servletMappings.get(requestURL);
-		String servletPath = requestURI;
+		String[] parts = requestURL.split("/");
+		StringBuffer url = new StringBuffer(requestURL.length());
+		String name = servletMappings.get("/");
+		if(name != null) {
+			for(int i = 1; i < parts.length; i++) {
+				url.append("/");
+				url.append(parts[i]);
+				name = servletMappings.get(url.toString());
+				if(name != null) {
+					break;
+				}
+			}
+		}
+		//String name = servletMappings.get(requestURL);
+		String servletPath = url.toString();
+		pathInfo = null;
+		if(!servletPath.equals(requestURL)) {
+			pathInfo = requestURL.substring(servletPath.length());
+		}
 		HttpServletRequest request = new HttpServletRequestImpl(contextPath, method, pathInfo, queryString, requestURI, requestURL, servletPath, protocol, remoteAddr, remotePort, scheme, serverName, serverPort);
 		HttpServletResponse response = new HttpServletResponseImpl();
 
@@ -121,7 +162,7 @@ public class Server {
 			ServletOutputStream out = response.getOutputStream();
 			boolean forbidden = path.startsWith("/lib/") || path.startsWith("/WEB-INF/");
 			File f = new File(path);
-			if(!forbidden && f.exists()) {
+			if(!forbidden && f.exists() && f.isFile()) {
 				String type = mimetypes.get(getFileExtension(path));
 				if(type == null) {
 					type = "application/octet-stream";
@@ -137,11 +178,19 @@ public class Server {
 				in.close();
 			} else {
 				response.setStatus(404);
-				out.println(getError404(requestURI));
+				out.println(getError404(contextPath + requestURI));
 			}
 		} else {
 			HttpServlet servlet = servlets.get(name);
-			servlet.service((HttpServletRequest)request, (HttpServletResponse)response);
+			if(servlet == null) {
+				String msg = getError500("A mapped servlet could not be found.", null);
+				ServletOutputStream out = response.getOutputStream();
+				response.setContentLength(msg.length());
+				response.setStatus(500);
+				out.println(msg);
+			} else {
+				servlet.service((HttpServletRequest)request, (HttpServletResponse)response);
+			}
 		}
 	}
 }

@@ -60,6 +60,38 @@ class JavaClassStatic {
 		}
 	}
 
+	public function saveState() {
+		$super = $this->super;
+		if($super !== NULL) {
+			$super = $this->super->getName();
+		}
+		return serialize(array(
+			'methods' => $this->methods,
+			'name' => $this->name,
+			'interfaces' => $this->interfaces,
+			'access_flags' => $this->access_flags,
+			'super' => $super,
+			'fields' => $this->fields
+		));
+	}
+
+	public function loadState($s, &$jvm) {
+		$this->jvm = &$jvm;
+		$data = unserialize($s);
+		$this->methods = $data['methods'];
+		$this->name = $data['name'];
+		$this->interfaces = $data['interfaces'];
+		$this->access_flags = $data['access_flags'];
+		$this->super = $data['super'];
+		$this->fields = $data['fields'];
+	}
+
+	public function rebuildReferences() {
+		if(($this->super !== NULL) && is_string($this->super)) {
+			$this->super = &$this->jvm->getStatic($this->super);
+		}
+	}
+
 	public function isInterface() {
 		return ($this->access_flags & JAVA_ACC_INTERFACE) ? true : false;
 	}

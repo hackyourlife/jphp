@@ -16,6 +16,7 @@ class JVM {
 	private $fsroot;
 
 	private static $debug_loading = true;
+	private static $debug_loglevel = 1;
 
 	public function __construct($params = array()) {
 		$this->classpath = array('lib/classes', '.');
@@ -41,6 +42,57 @@ class JVM {
 				$this->fsroot = $value;
 				break;
 			}
+		}
+	}
+
+	public static function setLogLevel($level) {
+		self::$debug_loading = $level > 0;
+		self::$debug_loglevel = $level;
+	}
+
+	public static function getLogLevel() {
+		return self::$debug_loglevel;
+	}
+
+	public function saveState() {
+		$classes = array();
+		foreach($this->classes as $name => $value) {
+			$classes[$name] = $value->saveState();
+		}
+		$state = array(
+			'classpath' => $this->classpath,
+			'builtinlibpath' => $this->builtinlibpath,
+			'classinstances' => $this->classinstances,
+			'primitiveclasses' => $this->primitiveclasses,
+			'native' => $this->native,
+			'references' => $this->references,
+			'classes' => $classes,
+			'current_thread' => $this->current_thread,
+			'system_threadgroup' => $this->system_threadgroup,
+			'fsroot' => $this->fsroot
+		);
+		return serialize($state);
+	}
+
+	public function loadState($s) {
+		$state = unserialize($s);
+		foreach($state['classes'] as $name => $value) {
+			$class = new JavaClassStatic();
+			$class->loadState($value, $this);
+			$this->classes[$name] = $class;
+		}
+		$this->classpath = $state['classpath'];
+		$this->builtinlibpath = $state['builtinlibpath'];
+		$this->classinstances = $state['classinstances'];
+		$this->primitiveclasses = $state['primitiveclasses'];
+		$this->native = $state['native'];
+		$this->references = $state['references'];
+		$this->classes = $state['classes'];
+		$this->current_thread = $state['current_thread'];
+		$this->system_threadgroup = $state['system_threadgroup'];
+		$this->fsroot = $state['fsroot'];
+		foreach($this->classes as $class) {
+			$class->rebuildReferences();
 		}
 	}
 
@@ -400,14 +452,14 @@ class References {
 		print_r($this->references);
 	}
 
-	public function get($ref) {
+	public function &get($ref) {
 		if(!isset($this->references[$ref])) {
 			throw new NoSuchReferenceException($ref);
 		}
 		return $this->references[$ref]->value;
 	}
 
-	public function set($ref, $value) {
+	public function set($ref, &$value) {
 		if(self::$debug) {
 			print("[GC] allocating object #$ref ({$value->getName()})\n");
 		}

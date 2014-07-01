@@ -126,6 +126,9 @@ class JavaArray extends JavaObject {
 		if(is_string($this->type)) {
 			foreach($this->array as $entry) {
 				if($entry !== NULL) {
+					if($this->jvm->getLogLevel() > 1) {
+						print("[ARRAY] releasing $entry\n");
+					}
 					$this->jvm->references->free($entry);
 				}
 			}

@@ -1,5 +1,7 @@
 <?php
 
+header('content-type: text/plain');
+
 require_once('lib/io/File.php');
 require_once('lib/io/binary.php');
 require_once('lib/io/endianess.php');
@@ -16,11 +18,44 @@ require_once('lib/jvm/opcodes.php');
 require_once('lib/jvm/interpreter.php');
 require_once('lib/jvm/jvm.php');
 
-$jvm = unserialize(file_get_contents('state.jvm'));
-$jvm->reloadNatives();
-$jvm->setFSRoot(dirname(__FILE__));
+set_time_limit(60);
 
-header('content-type: text/plain');
+$jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes', 'fsroot' => dirname(__FILE__)));
+$jvm->setLogLevel(0);
+$jvm->initialize();
+
+$trace = new StackTrace();
+$server = $jvm->getStatic('org/hackyourlife/server/Server');
+
+$servlet_names = array(
+	'index'	=> 'org/hackyourlife/webpage/Index',
+	'sources' => 'org/hackyourlife/webpage/Source'
+);
+
+$servlet_paths = array(
+	'/'	=> 'index',
+	'/src'	=> 'sources'
+);
+
+foreach($servlet_names as $name => $class) {
+	$servlet = $jvm->instantiate($class);
+	$servletref = $jvm->references->newref();
+	$jvm->references->set($servletref, $servlet);
+	$servlet->setReference($servletref);
+	$servlet->callSpecial('<init>', '()V', NULL, NULL, $trace);
+	$nameref = JavaString::newString($jvm, $name);
+	$args = array($nameref, $servletref);
+	$jvm->call('org/hackyourlife/server/Server', 'registerServlet', '(Ljava/lang/String;Ljavax/servlet/http/HttpServlet;)V', $args, $trace);
+}
+
+foreach($servlet_paths as $path => $name) {
+	$pathref = JavaString::newString($jvm, $path);
+	$nameref = JavaString::newString($jvm, $name);
+	$args = array($pathref, $nameref);
+	$jvm->call('org/hackyourlife/server/Server', 'mapServlet', '(Ljava/lang/String;Ljava/lang/String;)V', $args, $trace);
+}
+
+
 $query_string = isset($_SERVER['REDIRECT_QUERY_STRING']) ? $_SERVER['REDIRECT_QUERY_STRING'] : $_SERVER['QUERY_STRING'];
 $url = isset($_SERVER['REDIRECT_URL']) ? $_SERVER['REDIRECT_URL'] : $_SERVER['SCRIPT_NAME'];
 

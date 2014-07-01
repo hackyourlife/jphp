@@ -23,8 +23,9 @@ set_time_limit(60);
 $classlist = array(
 	//'java/io/PrintWriter',
 	'java/io/IOException',
-	'java/io/OutputStreamWriter',
+	//'java/io/OutputStreamWriter',
 	//'java/io/BufferedReader',
+	//'java/io/FileReader',
 	//'java/io/InputStreamReader',
 	'java/lang/Enum',
 	'java/lang/Byte',
@@ -46,19 +47,23 @@ $classlist = array(
 	'java/nio/charset/CoderResult$1',
 	'java/nio/charset/CoderResult$Cache',
 	'java/nio/charset/CoderResult$2',
+	'java/nio/charset/CharsetDecoder',
 	'java/io/File',
 	'java/io/File$PathStatus',
-	'java/io/Reader',
-	'java/io/Writer',
-	'java/io/BufferedReader',
-	'java/io/StringReader',
-	'java/io/StringWriter',
+	//'java/io/Reader',
+	//'java/io/Writer',
+	//'java/io/BufferedReader',
+	//'java/io/StringReader',
+	//'java/io/StringWriter',
 	'java/io/FileInputStream',
 	'java/io/FileInputStream$1',
 	//'java/util/ResourceBundle',
 	//'java/util/concurrent/ConcurrentHashMap',
 	//'java/util/Collection'
 	'sun/nio/cs/ArrayEncoder',
+	'sun/nio/cs/ArrayDecoder',
+	'sun/nio/cs/StreamDecoder',
+	'sun/nio/cs/UTF_8$Decoder',
 	// servlet api
 	'javax/servlet/http/HttpServletRequest',
 	'javax/servlet/http/HttpServletResponse',
@@ -67,7 +72,8 @@ $classlist = array(
 	'org/hackyourlife/server/HttpServletResponseImpl',
 	'org/hackyourlife/server/ServletOutputStreamImpl',
 	'org/hackyourlife/webpage/Webpage',
-	'org/hackyourlife/webpage/Layout'
+	'org/hackyourlife/webpage/Layout',
+	//'org/hackyourlife/syntax/JavaHighlighter'
 );
 echo('creating jvm...');
 $jvm = new JVM(array('classpath' => 'lib/classes:WEB-INF/classes', 'fsroot' => dirname(__FILE__)));
@@ -92,11 +98,13 @@ $trace = new StackTrace();
 $server = $jvm->getStatic('org/hackyourlife/server/Server');
 
 $servlet_names = array(
-	'index'	=> 'org/hackyourlife/webpage/Index'
+	'index'	=> 'org/hackyourlife/webpage/Index',
+	//'source' => 'org/hackyourlife/webpage/Source'
 );
 
 $servlet_paths = array(
-	'/'	=> 'index'
+	'/'	=> 'index',
+	//'/src'	=> 'source'
 );
 
 foreach($servlet_names as $name => $class) {
@@ -117,7 +125,6 @@ foreach($servlet_paths as $path => $name) {
 	$jvm->call('org/hackyourlife/server/Server', 'mapServlet', '(Ljava/lang/String;Ljava/lang/String;)V', $args, $trace);
 }
 
-file_put_contents('state.jvm', serialize($jvm));
 
 $peak = memory_get_peak_usage(true);
 $peak_mb = (int) ($peak / (1024 * 1024));
@@ -125,3 +132,7 @@ $usage = memory_get_usage(true);
 $usage_mb = (int) ($usage / (1024 * 1024));
 print("peak usage: $peak_mb MiB\n");
 print("current usage: $usage_mb MiB\n");
+
+$jvm->setFSRoot('/');
+file_put_contents('state.jvm', serialize($jvm));
+//file_put_contents('jvm.state', $jvm->saveState());

@@ -295,7 +295,9 @@ class Interpreter {
 				}
 				$array = $references->get($arrayref);
 				$array->set($index, $value);
-				$references->persistent($value);
+				if($value !== NULL) {
+					$references->persistent($value);
+				}
 				break;
 			}
 			case 0x01: { // aconst_null
@@ -343,7 +345,9 @@ class Interpreter {
 			}
 			case 0xb0: { // areturn, throws IllegalMonitorStateException
 				$result = $stack->pop();
-				$references->persistent($result);
+				if($result !== NULL) {
+					$references->persistent($result);
+				}
 				$finished = true;
 				break;
 			}
@@ -2108,23 +2112,27 @@ class ArgumentStack {
 }
 
 class InterpreterReferences {
-	private $references = array();
+	private $references;
 	private $nextref = 0;
 	private $root;
 	public function __construct($root) {
 		$this->root = $root;
+		$this->references = array();
 	}
 	public function dump() {
 		print_r($this->references);
 	}
-	public function get($ref) {
+	public function &get($ref) {
 		if(!isset($this->references[$ref])) {
 			$object = $this->root->useref($ref);
 			$this->references[$ref] = true;
 		}
 		return $this->root->get($ref);
 	}
-	public function set($ref, $value) {
+	public function set($ref, &$value) {
+		if(!is_integer($ref)) {
+			throw new Exception('not a reference!');
+		}
 		$this->references[$ref] = true;
 		$this->root->set($ref, $value);
 	}
@@ -2135,6 +2143,9 @@ class InterpreterReferences {
 		foreach($this->references as $reference => $transient) {
 			if($transient) {
 				$this->root->free($reference);
+			} else if(JVM::getLogLevel() > 1) {
+				$name = $this->root->get($reference)->getName();
+				print("[GC] not cleaning up: $reference ($name)\n");
 			}
 		}
 	}

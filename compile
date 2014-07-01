@@ -1,6 +1,9 @@
 #!/bin/sh
+
+SOURCES="src/org/hackyourlife/webpage/Index.java src/org/hackyourlife/webpage/Source.java"
+
 #javac -cp src/servlet-api.jar:src -d WEB-INF/classes src/org/hackyourlife/server/Server.java
 javac -cp src -d WEB-INF/classes src/org/hackyourlife/server/Server.java
 
-javac -cp src/servlet-api.jar:src -d WEB-INF/classes src/org/hackyourlife/webpage/Index.java || exit
-javac -cp src/servlet-api.jar:src -d apache-tomcat/webapps/php/WEB-INF/classes src/org/hackyourlife/webpage/Index.java
+javac -cp src/servlet-api.jar:src -d WEB-INF/classes $SOURCES || exit
+javac -cp src/servlet-api.jar:src -d apache-tomcat/webapps/php/WEB-INF/classes $SOURCES

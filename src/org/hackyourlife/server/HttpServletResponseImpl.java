@@ -4,8 +4,8 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Cookie;
 import javax.servlet.ServletOutputStream;
 
-//import java.io.PrintWriter;
-//import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.OutputStreamWriter;
 
 import java.util.Hashtable;
 //import java.util.Collection;
@@ -16,7 +16,7 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 	private int status;
 	private String contentType;
 	private ServletOutputStream out;
-	//private PrintWriter writer;
+	private PrintWriter writer;
 	private int contentLength;
 
 	protected HttpServletResponseImpl() {
@@ -143,9 +143,12 @@ public class HttpServletResponseImpl implements HttpServletResponse {
 		return out;
 	}
 
-	//public PrintWriter getWriter() {
-	//	return writer;
-	//}
+	public PrintWriter getWriter() {
+		if(writer == null) {
+			writer = new PrintWriter(new OutputStreamWriter(out));
+		}
+		return writer;
+	}
 
 	public boolean isCommitted() {
 		return true;

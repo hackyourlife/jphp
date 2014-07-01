@@ -250,4 +250,8 @@ class JavaString extends JavaClassInstance {
 			return $string->getReference();
 		}
 	}
+
+	public static function isInternal(&$jvm, $ref) {
+		return in_array($ref, static::$strings, true);
+	}
 }

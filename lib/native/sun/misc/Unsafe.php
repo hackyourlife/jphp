@@ -82,7 +82,9 @@ function Java_sun_misc_Unsafe_allocateMemory(&$jvm, &$class, $args, $trace) {
 		'size' => $bytes,
 		'value' => array()
 	);
-	print("[MEMORY] allocated $bytes bytes: address = $address\n");
+	if($jvm->getLogLevel() > 0) {
+		print("[MEMORY] allocated $bytes bytes: address = $address\n");
+	}
 	return $address;
 }
 
@@ -90,14 +92,18 @@ function Java_sun_misc_Unsafe_freeMemory(&$jvm, &$class, $args, $trace) {
 	global $MEMORY;
 	$address = $args[0];
 	unset($MEMORY[$address]);
-	print("[MEMORY] freed $address\n");
+	if($jvm->getLogLevel() > 0) {
+		print("[MEMORY] freed $address\n");
+	}
 }
 
 function Java_sun_misc_Unsafe_putLong(&$jvm, &$class, $args, $trace) {
 	global $MEMORY;
 	$address = $args[0];
 	$x = $args[1];
-	print("[MEMORY] putLong to $address\n");
+	if($jvm->getLogLevel() > 0) {
+		print("[MEMORY] putLong to $address\n");
+	}
 	$mem = &$MEMORY[$address]->value;
 	$mem[0] = ($x >> 56) & 0xFF;
 	$mem[1] = ($x >> 48) & 0xFF;
@@ -112,6 +118,8 @@ function Java_sun_misc_Unsafe_putLong(&$jvm, &$class, $args, $trace) {
 function Java_sun_misc_Unsafe_getByte(&$jvm, &$class, $args, $trace) {
 	global $MEMORY;
 	$address = $args[0];
-	print("[MEMORY] readByte from $address\n");
+	if($jvm->getLogLevel() > 0) {
+		print("[MEMORY] readByte from $address\n");
+	}
 	return s8($MEMORY[$address]->value[0]);
 }
