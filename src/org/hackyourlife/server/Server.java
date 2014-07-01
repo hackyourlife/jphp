@@ -19,11 +19,13 @@ public class Server {
 	private static Hashtable<String,HttpServlet> servlets;
 	private static Hashtable<String,String> servletMappings;
 	private static Hashtable<String,String> mimetypes;
+	private static String[] welcomepages;
 	private static String version = "PHP-Java Server 1.0";
 
 	static {
 		servlets = new Hashtable<String,HttpServlet>();
 		servletMappings = new Hashtable<String,String>();
+		welcomepages = new String[0];
 
 		mimetypes = new Hashtable<String,String>();
 		mimetypes.put("java",	"text/x-java-source");
@@ -43,6 +45,10 @@ public class Server {
 
 	public static void mapServlet(String url, String name) {
 		servletMappings.put(url, name);
+	}
+
+	public static void setWelcomePages(String[] names) {
+		welcomepages = names;
 	}
 
 	private static String getError(int status, String title, String description, String type, String exception, String note) {
@@ -108,9 +114,18 @@ public class Server {
 		return result.toString();
 	}
 
+	public static boolean inArray(String s, String[] array) {
+		for(int i = 0; i < array.length; i++) {
+			if(array[i].equals(s)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public static String getRealPath(String path) {
 		String[] tokens = path.split("/");
-		String[] newpath = new String[tokens.length];
+		String[] newpath = new String[tokens.length + 1];
 		int top = 0;
 		for(int i = 0; i < tokens.length; i++) {
 			if(tokens[i].equals(".")) {
@@ -125,6 +140,9 @@ public class Server {
 				newpath[top++] = tokens[i];
 			}
 		}
+		if(path.charAt(path.length() - 1) == '/') { // trailing "/"
+			newpath[top++] = "";
+		}
 		if(path.charAt(0) == '/') {
 			return "/" + join(newpath, "/", top);
 		} else {
@@ -136,7 +154,7 @@ public class Server {
 		String[] parts = requestURL.split("/");
 		StringBuffer url = new StringBuffer(requestURL.length());
 		String name = servletMappings.get("/");
-		if(name != null) {
+		if(name == null) {
 			for(int i = 1; i < parts.length; i++) {
 				url.append("/");
 				url.append(parts[i]);
@@ -145,13 +163,29 @@ public class Server {
 					break;
 				}
 			}
+			if(url.length() == 0) { // requestURL = "/" results in zero length "parts"
+				url.append("/");
+			}
+		} else {
+			url.append("/");
 		}
+
+		if((name == null) && (url.charAt(url.length() - 1) == '/')) { // check default page
+			for(String page : welcomepages) {
+				name = servletMappings.get(url + page);
+				if(name != null) {
+					break;
+				}
+			}
+		}
+
 		//String name = servletMappings.get(requestURL);
 		String servletPath = url.toString();
 		pathInfo = null;
 		if(!servletPath.equals(requestURL)) {
 			pathInfo = requestURL.substring(servletPath.length());
 		}
+
 		HttpServletRequest request = new HttpServletRequestImpl(contextPath, method, pathInfo, queryString, requestURI, requestURL, servletPath, protocol, remoteAddr, remotePort, scheme, serverName, serverPort);
 		HttpServletResponse response = new HttpServletResponseImpl();
 
@@ -161,6 +195,14 @@ public class Server {
 			String path = getRealPath(requestURL);
 			ServletOutputStream out = response.getOutputStream();
 			boolean forbidden = path.startsWith("/lib/") || path.startsWith("/WEB-INF/");
+			if(!forbidden && (path.charAt(path.length() - 1) == '/')) {
+				for(String file : welcomepages) {
+					if(new File(path + file).exists()) {
+						path += file;
+						break;
+					}
+				}
+			}
 			File f = new File(path);
 			if(!forbidden && f.exists() && f.isFile()) {
 				String type = mimetypes.get(getFileExtension(path));
@@ -169,7 +211,7 @@ public class Server {
 				}
 				response.setContentLength((int)f.length());
 				response.setContentType(type);
-				FileInputStream in = new FileInputStream(requestURL);
+				FileInputStream in = new FileInputStream(path);
 				byte[] buf = new byte[128];
 				int nbytes;
 				while((nbytes = in.read(buf, 0, buf.length)) != -1) {

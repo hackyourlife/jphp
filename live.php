@@ -28,13 +28,18 @@ $trace = new StackTrace();
 $server = $jvm->getStatic('org/hackyourlife/server/Server');
 
 $servlet_names = array(
-	'index'	=> 'org/hackyourlife/webpage/Index',
-	'sources' => 'org/hackyourlife/webpage/Source'
+	'index'		=> 'org/hackyourlife/webpage/Index',
+	'sources'	=> 'org/hackyourlife/webpage/Source'
 );
 
 $servlet_paths = array(
-	'/'	=> 'index',
-	'/src'	=> 'sources'
+	'/default'	=> 'index',
+	'/src'		=> 'sources'
+);
+
+$default_pages = array(
+	'default',
+	'index.html'
 );
 
 foreach($servlet_names as $name => $class) {
@@ -55,6 +60,14 @@ foreach($servlet_paths as $path => $name) {
 	$jvm->call('org/hackyourlife/server/Server', 'mapServlet', '(Ljava/lang/String;Ljava/lang/String;)V', $args, $trace);
 }
 
+$default = new JavaArray($jvm, count($default_pages), 'java/lang/String');
+$defaultref = $jvm->references->newref();
+$jvm->references->set($defaultref, $default);
+$default->setReference($defaultref);
+for($i = 0; $i < count($default_pages); $i++) {
+	$default->set($i, JavaString::newString($jvm, $default_pages[$i]));
+}
+$jvm->call('org/hackyourlife/server/Server', 'setWelcomePages', '([Ljava/lang/String;)V', array($defaultref), $trace);
 
 $query_string = isset($_SERVER['REDIRECT_QUERY_STRING']) ? $_SERVER['REDIRECT_QUERY_STRING'] : $_SERVER['QUERY_STRING'];
 $url = isset($_SERVER['REDIRECT_URL']) ? $_SERVER['REDIRECT_URL'] : $_SERVER['SCRIPT_NAME'];

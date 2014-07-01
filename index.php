@@ -62,9 +62,9 @@ $args = array(
 
 $server->call('service', '(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V', $args, $trace);
 
-$peak = memory_get_peak_usage(true);
-$peak_mb = (int) ($peak / (1024 * 1024));
-$usage = memory_get_usage(true);
-$usage_mb = (int) ($usage / (1024 * 1024));
-print("peak usage: $peak_mb MiB\n");
-print("current usage: $usage_mb MiB\n");
+//$peak = memory_get_peak_usage(true);
+//$peak_mb = (int) ($peak / (1024 * 1024));
+//$usage = memory_get_usage(true);
+//$usage_mb = (int) ($usage / (1024 * 1024));
+//print("peak usage: $peak_mb MiB\n");
+//print("current usage: $usage_mb MiB\n");

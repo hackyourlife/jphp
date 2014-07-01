@@ -55,6 +55,7 @@ $classlist = array(
 	//'java/io/BufferedReader',
 	//'java/io/StringReader',
 	//'java/io/StringWriter',
+	//'java/io/FileNotFoundException',
 	'java/io/FileInputStream',
 	'java/io/FileInputStream$1',
 	//'java/util/ResourceBundle',
@@ -103,8 +104,13 @@ $servlet_names = array(
 );
 
 $servlet_paths = array(
-	'/'	=> 'index',
+	'/default'	=> 'index',
 	//'/src'	=> 'source'
+);
+
+$default_pages = array(
+	'default',
+	'index.html'
 );
 
 foreach($servlet_names as $name => $class) {
@@ -125,6 +131,14 @@ foreach($servlet_paths as $path => $name) {
 	$jvm->call('org/hackyourlife/server/Server', 'mapServlet', '(Ljava/lang/String;Ljava/lang/String;)V', $args, $trace);
 }
 
+$default = new JavaArray($jvm, count($default_pages), 'java/lang/String');
+$defaultref = $jvm->references->newref();
+$jvm->references->set($defaultref, $default);
+$default->setReference($defaultref);
+for($i = 0; $i < count($default_pages); $i++) {
+	$default->set($i, JavaString::newString($jvm, $default_pages[$i]));
+}
+$jvm->call('org/hackyourlife/server/Server', 'setWelcomePages', '([Ljava/lang/String;)V', array($defaultref), $trace);
 
 $peak = memory_get_peak_usage(true);
 $peak_mb = (int) ($peak / (1024 * 1024));
