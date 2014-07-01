@@ -76,6 +76,12 @@ public class Index extends HttpServlet {
 				+ "<tr><th>Eigenschaft</th><th>Wert</th></tr>"
 				+ "</thead><tbody>" + rows + "</tbody></table></div>");
 
+		page.addSection("<h2>Quellcode</h2>"
+				+ "<p>Der Quellcode des Servlet-Containers kann hier eingesehen werden:"
+				+ " <a href=\"src/org/hackyourlife/server/Server.java\">Server.java</a></p>"
+				+ "<p>Für besonders Interessierte gibt es hier den Quellcode der PHP-Hauptseite,"
+				+ " welcher die Nutzung der JVM zeigt: <a href=\"index.php\">index.php</a></p>");
+
 		String msg = page.toString();
 		ServletOutputStream out = response.getOutputStream();
 		byte[] bytes = msg.getBytes("UTF-8");

@@ -179,7 +179,6 @@ public class Server {
 			}
 		}
 
-		//String name = servletMappings.get(requestURL);
 		String servletPath = url.toString();
 		pathInfo = null;
 		if(!servletPath.equals(requestURL)) {
@@ -195,7 +194,7 @@ public class Server {
 			String path = getRealPath(requestURL);
 			ServletOutputStream out = response.getOutputStream();
 			boolean forbidden = path.startsWith("/lib/") || path.startsWith("/WEB-INF/");
-			if(!forbidden && (path.charAt(path.length() - 1) == '/')) {
+			if(!forbidden && (path.charAt(path.length() - 1) == '/')) { // check welcome pages
 				for(String file : welcomepages) {
 					if(new File(path + file).exists()) {
 						path += file;
